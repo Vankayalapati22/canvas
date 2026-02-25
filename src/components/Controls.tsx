@@ -172,10 +172,10 @@ const Controls: React.FC<ControlsProps> = ({
             {hasConnections && (
                 <>
                     <button className="ctrl-btn danger" onClick={onClearLastConnection} title="Remove the last connection added">
-                        ✂ Clear One
+                        Clear One
                     </button>
                     <button className="ctrl-btn danger" onClick={onClearConnections} title="Remove all connection lines">
-                        🗑 Clear All
+                        Clear All
                     </button>
                 </>
             )}
