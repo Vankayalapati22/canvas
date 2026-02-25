@@ -1,32 +1,48 @@
-name: React TypeScript CI
+name: React TypeScript CI + Deploy
 
 on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the repository
-      - name: Checkout code
+      # 1️ Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Step 2: Setup Node.js
+      # 2️ Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18
 
-      # Step 3: Install dependencies
+      # 3️ Install dependencies
       - name: Install dependencies
         run: npm install
 
-      # Step 4: Build the application
+      # 4 Build application
       - name: Build project
         run: npm run build
+
+      # 5️ Setup GitHub Pages
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      # 6️ Upload build output
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      # 7️ Deploy to GitHub Pages
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
