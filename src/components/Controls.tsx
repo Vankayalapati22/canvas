@@ -149,13 +149,13 @@ const Controls: React.FC<ControlsProps> = ({
 
             {/* ── Canvas Zoom ───────────────────────────── */}
             <button className="ctrl-btn" onClick={onZoomOut} title="Zoom out canvas">
-                🔍− Zoom Out
+                − Zoom Out
             </button>
             <span style={{ fontSize: 12, fontWeight: 700, color: '#a5b4fc', minWidth: 42, textAlign: 'center' }}>
                 {Math.round(canvasScale * 100)}%
             </span>
             <button className="ctrl-btn" onClick={onZoomIn} title="Zoom in canvas">
-                🔍+ Zoom In
+                + Zoom In
             </button>
 
             <div className="controls-divider" />
