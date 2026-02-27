@@ -1,19 +1,9 @@
 import React from 'react';
 import type { DroppedItem, Connection } from '../types';
+import { CARD_W, CARD_H } from '../cardDimensions';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const OFFSET = 12; // perpendicular lane offset (px) for two-way connections
-
-// ── Helper: visual centre of an item ─────────────────────────────────────────
-function getCenter(item: DroppedItem): { x: number; y: number } {
-    const scale = item.size * item.zoom;
-    let w = 80, h = 52;
-    if (item.type === 'circle') { w = 80; h = 80; }
-    if (item.type === 'triangle') { w = 80; h = 69; }
-    if (item.type === 'text') { w = 80; h = 44; }
-    if (item.type === 'image') { w = 44; h = 44; }
-    return { x: item.x + (w * scale) / 2, y: item.y + (h * scale) / 2 };
-}
 
 // ── Helper: perpendicular offset vector ───────────────────────────────────────
 function perp(
@@ -23,8 +13,53 @@ function perp(
 ): { ox: number; oy: number } {
     const dx = p2.x - p1.x;
     const dy = p2.y - p1.y;
-    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    const len = Math.sqrt(dx * dx + dy * dy) || 0.0001;
     return { ox: (-dy / len) * dist, oy: (dx / len) * dist };
+}
+
+// ── Four precise edge-point helpers ──────────────────────────────────────────
+// All coordinates are in canvas-space (item.x / item.y is the card's top-left).
+
+/** Left-center edge of the card */
+function getLeftEdge(item: DroppedItem): { x: number; y: number } {
+    return { x: item.x, y: item.y + CARD_H / 2 };
+}
+
+/** Right-center edge of the card */
+function getRightEdge(item: DroppedItem): { x: number; y: number } {
+    return { x: item.x + CARD_W, y: item.y + CARD_H / 2 };
+}
+
+/** Top-center edge of the card */
+function getTopEdge(item: DroppedItem): { x: number; y: number } {
+    return { x: item.x + CARD_W / 2, y: item.y };
+}
+
+/** Bottom-center edge of the card */
+function getBottomEdge(item: DroppedItem): { x: number; y: number } {
+    return { x: item.x + CARD_W / 2, y: item.y + CARD_H };
+}
+
+/** Computes the shortest straight-line connection between two cards using their 4 edges */
+function getShortestConnection(from: DroppedItem, to: DroppedItem): { p1: { x: number; y: number }, p2: { x: number; y: number } } {
+    const edgesFrom = [getTopEdge(from), getRightEdge(from), getBottomEdge(from), getLeftEdge(from)];
+    const edgesTo = [getTopEdge(to), getRightEdge(to), getBottomEdge(to), getLeftEdge(to)];
+
+    let shortestDist = Infinity;
+    let bestP1 = edgesFrom[0];
+    let bestP2 = edgesTo[0];
+
+    for (const p1 of edgesFrom) {
+        for (const p2 of edgesTo) {
+            const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+            if (dist < shortestDist) {
+                shortestDist = dist;
+                bestP1 = p1;
+                bestP2 = p2;
+            }
+        }
+    }
+    return { p1: bestP1, p2: bestP2 };
 }
 
 interface ConnectionLayerProps {
@@ -56,19 +91,19 @@ const ConnectionLayer: React.FC<ConnectionLayerProps> = ({
         >
             <defs>
                 {/* ── A→B (indigo) arrowheads ─────────────────────────────── */}
-                <marker id="arrow-ab" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                    <polygon points="0 0, 10 3.5, 0 7" fill="#6366f1" opacity="0.85" />
+                <marker id="arrow-ab" markerWidth="6" markerHeight="4" refX="5" refY="2" orient="auto">
+                    <polyline points="0 0, 6 2, 0 4" fill="none" stroke="#6366f1" strokeWidth="2" opacity="0.85" />
                 </marker>
-                <marker id="arrow-ab-sel" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                    <polygon points="0 0, 10 3.5, 0 7" fill="#a5b4fc" />
+                <marker id="arrow-ab-sel" markerWidth="6" markerHeight="4" refX="5" refY="2" orient="auto">
+                    <polyline points="0 0, 6 2, 0 4" fill="none" stroke="#a5b4fc" strokeWidth="2" />
                 </marker>
 
                 {/* ── B→A (rose) arrowheads ───────────────────────────────── */}
-                <marker id="arrow-ba" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                    <polygon points="0 0, 10 3.5, 0 7" fill="#f43f5e" opacity="0.85" />
+                <marker id="arrow-ba" markerWidth="6" markerHeight="4" refX="5" refY="2" orient="auto">
+                    <polyline points="0 0, 6 2, 0 4" fill="none" stroke="#f43f5e" strokeWidth="2" opacity="0.85" />
                 </marker>
-                <marker id="arrow-ba-sel" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                    <polygon points="0 0, 10 3.5, 0 7" fill="#fb7185" />
+                <marker id="arrow-ba-sel" markerWidth="6" markerHeight="4" refX="5" refY="2" orient="auto">
+                    <polyline points="0 0, 6 2, 0 4" fill="none" stroke="#fb7185" strokeWidth="2" />
                 </marker>
 
                 {/* ── Glow filter for selected lines ───────────────────────── */}
@@ -83,8 +118,8 @@ const ConnectionLayer: React.FC<ConnectionLayerProps> = ({
                 const to = itemMap.get(conn.toId);
                 if (!from || !to) return null;
 
-                const p1 = getCenter(from); // A (FROM)
-                const p2 = getCenter(to);   // B (TO)
+                // Find the shortest connection between any of the 4 edges
+                const { p1, p2 } = getShortestConnection(from, to);
 
                 const isTwoWay = (conn.direction ?? 'one-way') === 'two-way';
                 const isSelected = conn.id === selectedConnectionId;

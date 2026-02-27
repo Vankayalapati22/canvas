@@ -5,7 +5,6 @@ import ConnectionLayer from './ConnectionLayer';
 
 interface CanvasProps {
     items: DroppedItem[];
-    selectedId: string | null;
     connections: Connection[];
     connectMode: boolean;
     connectFirst: string | null;
@@ -16,13 +15,13 @@ interface CanvasProps {
     onMoveItem: (id: string, x: number, y: number) => void;
     onDeselect: () => void;
     onSelectConnection: (id: string | null) => void;
-    onDeleteItem: (id: string) => void;
+    onRemoveItem: (id: string) => void;  // NEW
+    onDetailItem: (id: string) => void;  // NEW
 }
 
 // ── Canvas Component ──────────────────────────────────────────────────────────
 const Canvas: React.FC<CanvasProps> = ({
     items,
-    selectedId,
     connections,
     connectMode,
     connectFirst,
@@ -33,7 +32,8 @@ const Canvas: React.FC<CanvasProps> = ({
     onMoveItem,
     onDeselect,
     onSelectConnection,
-    onDeleteItem,
+    onRemoveItem,
+    onDetailItem,
 }) => {
     const [isDragOver, setIsDragOver] = useState(false);
     const wrapperRef = useRef<HTMLDivElement>(null);
@@ -117,10 +117,9 @@ const Canvas: React.FC<CanvasProps> = ({
                     <CanvasItem
                         key={item.id}
                         item={item}
-                        isSelected={item.id === selectedId}
                         onSelect={onSelect}
-                        onMove={onMoveItem}
-                        onDelete={onDeleteItem}
+                        onRemove={onRemoveItem}
+                        onDetail={onDetailItem}
                     />
                 ))}
 

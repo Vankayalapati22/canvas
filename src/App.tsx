@@ -5,6 +5,8 @@ import Sidebar from './components/Sidebar';
 import Canvas from './components/Canvas';
 import Controls from './components/Controls';
 import HistoryPanel from './components/HistoryPanel';
+import PaletteDetailPanel from './components/PaletteDetailPanel';
+import DetailsPanel from './components/DetailsPanel';
 
 // ── Zoom step constants ───────────────────────────────────────────────────────
 const ZOOM_STEP = 0.1;
@@ -42,8 +44,11 @@ function App() {
     // Whether the History panel is open
     const [showHistory, setShowHistory] = useState(false);
 
-    // Track the last dragged palette item for dim feedback (optional)
-    const [, setDraggingPalette] = useState<PaletteItem | null>(null);
+    // Currently selected palette item for detail view
+    const [detailItem, setDetailItem] = useState<PaletteItem | null>(null);
+
+    // ID of the canvas item whose ➜ arrow was clicked (shows bottom DetailsPanel)
+    const [detailItemId, setDetailItemId] = useState<string | null>(null);
 
     // ── Derived ─────────────────────────────────────────────────────────────────
     const selectedItem = droppedItems.find(i => i.id === selectedId) ?? null;
@@ -53,11 +58,36 @@ function App() {
     const selectedConnInfo = selectedConn
         ? {
             connId: selectedConn.id,
-            from: droppedItems.find(i => i.id === selectedConn.fromId)?.label ?? '?',
-            to: droppedItems.find(i => i.id === selectedConn.toId)?.label ?? '?',
+            from: (() => { const i = droppedItems.find(i => i.id === selectedConn.fromId); return i ? (i.dropCount > 1 ? `${i.label} ${i.dropCount}` : i.label) : '?'; })(),
+            to: (() => { const i = droppedItems.find(i => i.id === selectedConn.toId); return i ? (i.dropCount > 1 ? `${i.label} ${i.dropCount}` : i.label) : '?'; })(),
             direction: selectedConn.direction,
         }
         : null;
+
+    // ── Remove a specific item by ID (used by the ✖ button on each item) ────
+    const handleRemoveItem = useCallback((id: string) => {
+        setDroppedItems(prev => prev.filter(item => item.id !== id));
+        setConnections(c => c.filter(cn => cn.fromId !== id && cn.toId !== id));
+        if (selectedId === id) setSelectedId(null);
+        if (detailItemId === id) setDetailItemId(null);
+    }, [selectedId, detailItemId]);
+
+    // ── Show details panel for the clicked item ───────────────────────────────
+    const handleDetailItem = useCallback((id: string) => {
+        setDetailItemId(id);
+    }, []);
+
+    // ── Undo: remove last item (LIFO) ─────────────────────────────────────────
+    const handleUndo = useCallback(() => {
+        setDroppedItems(prev => {
+            if (prev.length === 0) return prev;
+            const removed = prev[prev.length - 1];
+            setConnections(c => c.filter(cn => cn.fromId !== removed.id && cn.toId !== removed.id));
+            if (selectedId === removed.id) setSelectedId(null);
+            if (detailItemId === removed.id) setDetailItemId(null);
+            return prev.slice(0, -1);
+        });
+    }, [selectedId, detailItemId]);
 
     // ── Keyboard shortcut: Ctrl+Z → Undo ────────────────────────────────────────
     useEffect(() => {
@@ -69,12 +99,13 @@ function App() {
         };
         window.addEventListener('keydown', handleKey);
         return () => window.removeEventListener('keydown', handleKey);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [droppedItems]);
+    }, [handleUndo]);
 
     // ── Drop new item from sidebar ────────────────────────────────────────────
     const handleDrop = useCallback((paletteItem: PaletteItem, x: number, y: number) => {
         setDroppedItems(prev => {
+            // Count how many items with the same label already exist
+            const sameLabel = prev.filter(i => i.label === paletteItem.label).length;
             const newItem: DroppedItem = {
                 id: crypto.randomUUID(),
                 type: paletteItem.type,
@@ -84,27 +115,35 @@ function App() {
                 x, y,
                 size: 1,
                 zoom: 1,
-                dropOrder: prev.length + 1, // 1-based sequence number
+                dropOrder: prev.length + 1, // global 1-based sequence (immutable)
+                dropCount: sameLabel + 1,   // per-label count: Star 1, Star 2 …
             };
             setSelectedId(newItem.id);
-            setSelectedConnectionId(null); // deselect connection on new drop
+            setSelectedConnectionId(null);
             return [...prev, newItem];
         });
     }, []);
 
     // ── Select an item (or handle connect-mode second click) ──────────────────
     const handleSelect = useCallback((id: string) => {
+        const item = droppedItems.find(i => i.id === id);
+        const isDb = item && ['postgresql', 'azuresql', 'mysql', 'oracle'].includes(item.type);
         if (connectMode) {
             if (!connectFirst) {
-                // Pick first item
+                if (isDb) return; // Don't allow DB as first
                 setConnectFirst(id);
             } else if (connectFirst !== id) {
+                const firstItem = droppedItems.find(i => i.id === connectFirst);
+                const isFirstDb = firstItem && ['postgresql', 'azuresql', 'mysql', 'oracle'].includes(firstItem.type);
+                if (isDb || isFirstDb) {
+                    setConnectFirst(null); // Reset if either is DB
+                    return;
+                }
                 // Pick second item — create connection if not already present
                 const existingConn = connections.find(
                     c => (c.fromId === connectFirst && c.toId === id) ||
                         (c.fromId === id && c.toId === connectFirst)
                 );
-
                 if (!existingConn) {
                     const newConn: Connection = {
                         id: crypto.randomUUID(),
@@ -116,18 +155,15 @@ function App() {
                     setSelectedConnectionId(newConn.id);
                     setSelectedId(null);
                 } else {
-                    // Already connected — select it so user can reverse/toggle
                     setSelectedConnectionId(existingConn.id);
                     setSelectedId(null);
                 }
-                // Reset for next pair
                 setConnectFirst(null);
             }
         } else {
-            // Normal selection
             setSelectedId(prev => (prev === id ? null : id));
         }
-    }, [connectMode, connectFirst, connections]);
+    }, [connectMode, connectFirst, connections, droppedItems]);
 
     const handleDeselect = useCallback(() => {
         if (!connectMode) setSelectedId(null);
@@ -140,23 +176,6 @@ function App() {
         );
     }, []);
 
-    // ── Delete a specific item ───────────────────────────────────────────────
-    const handleDeleteItem = useCallback((id: string) => {
-        setDroppedItems(prev => prev.filter(item => item.id !== id));
-        setConnections(prev => prev.filter(c => c.fromId !== id && c.toId !== id));
-        if (selectedId === id) setSelectedId(null);
-    }, [selectedId]);
-
-    // ── Undo: remove last item (LIFO) ─────────────────────────────────────────
-    const handleUndo = useCallback(() => {
-        setDroppedItems(prev => {
-            if (prev.length === 0) return prev;
-            const removed = prev[prev.length - 1];
-            setConnections(c => c.filter(cn => cn.fromId !== removed.id && cn.toId !== removed.id));
-            if (selectedId === removed.id) setSelectedId(null);
-            return prev.slice(0, -1);
-        });
-    }, [selectedId]);
 
     // ── Undo All: clear every item + all connections at once ─────────────────
     const handleUndoAll = useCallback(() => {
@@ -164,6 +183,7 @@ function App() {
         setConnections([]);
         setSelectedId(null);
         setSelectedConnectionId(null);
+        setDetailItemId(null);
     }, []);
 
     // ── Auto align: evenly space all items horizontally ───────────────────────
@@ -211,6 +231,7 @@ function App() {
     // ── Toggle History panel ───────────────────────────────────────────────
     const handleToggleHistory = useCallback(() => {
         setShowHistory(prev => !prev);
+        setDetailItem(null); // Close detail panel if opening history
     }, []);
 
     // ── Reverse a connection: swap fromId ⇄ toId ─────────────────────────
@@ -266,14 +287,21 @@ function App() {
         []
     );
 
+    // ── Handle Palette Item Click ────────────────────────────────────────
+    const handlePaletteClick = useCallback((item: PaletteItem) => {
+        setDetailItem(item);
+        setShowHistory(false); // Close history if opening detail
+    }, []);
+
     // ── Render ───────────────────────────────────────────────────────────────────────────
     return (
         <div className="app">
-            {/* ── Left Sidebar ─────────────────────────── */}
+            {/* ── Sidebar (position toggled) ─────────── */}
             <Sidebar
-                onDragStart={setDraggingPalette}
+                onDragStart={() => { }} // This prop is required by Sidebar but its state was unused.
                 items={droppedItems}
                 connections={connections}
+                onItemClick={handlePaletteClick}
             />
 
             {/* ── Right Panel (Controls + Canvas) ──────── */}
@@ -303,7 +331,6 @@ function App() {
                 <div className="canvas-wrapper">
                     <Canvas
                         items={droppedItems}
-                        selectedId={selectedId}
                         connections={connections}
                         connectMode={connectMode}
                         connectFirst={connectFirst}
@@ -314,7 +341,8 @@ function App() {
                         onMoveItem={handleMoveItem}
                         onDeselect={handleDeselect}
                         onSelectConnection={handleSelectConnection}
-                        onDeleteItem={handleDeleteItem}
+                        onRemoveItem={handleRemoveItem}
+                        onDetailItem={handleDetailItem}
                     />
                 </div>
 
@@ -326,7 +354,28 @@ function App() {
                         onClose={() => setShowHistory(false)}
                     />
                 )}
+
+                {/* Palette Detail panel — similar to History panel */}
+                {detailItem && (
+                    <PaletteDetailPanel
+                        item={detailItem}
+                        onClose={() => setDetailItem(null)}
+                    />
+                )}
+
+                {/* ── Canvas item details panel (bottom, shown on ➜ click) ── */}
+                {detailItemId && (() => {
+                    const found = droppedItems.find(i => i.id === detailItemId);
+                    return found ? (
+                        <DetailsPanel
+                            item={found}
+                            onClose={() => setDetailItemId(null)}
+                        />
+                    ) : null;
+                })()}
             </div>
+
+
         </div>
     );
 }

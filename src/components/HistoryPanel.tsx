@@ -1,20 +1,18 @@
 import React from 'react';
 import type { DroppedItem, Connection } from '../types';
-
-// ── Ordinal helper ────────────────────────────────────────────────────────────
-function ordinal(n: number): string {
-    if (n >= 11 && n <= 13) return `${n}th`;
-    switch (n % 10) {
-        case 1: return `${n}st`;
-        case 2: return `${n}nd`;
-        case 3: return `${n}rd`;
-        default: return `${n}th`;
-    }
-}
+import { ordinal } from '../utils';
 
 // Type icons for display
 const TYPE_ICON: Record<string, string> = {
-    rect: '▭', circle: '◯', triangle: '△', text: 'T', image: '🖼',
+    rect: '▭',
+    circle: '◯',
+    triangle: '△',
+    text: 'T',
+    image: '🖼',
+    postgresql: '🟦',
+    azuresql: '☁️',
+    mysql: '🟦',
+    oracle: '🔴',
 };
 
 interface HistoryPanelProps {
@@ -25,8 +23,8 @@ interface HistoryPanelProps {
 
 // ── HistoryPanel ──────────────────────────────────────────────────────────────
 const HistoryPanel: React.FC<HistoryPanelProps> = ({ items, connections, onClose }) => {
-    // Build id → label map for showing connection labels
-    const labelMap = new Map(items.map(i => [i.id, i.label]));
+    // Build id → label map for showing connection labels with dropCount
+    const labelMap = new Map(items.map(i => [i.id, i.dropCount > 1 ? `${i.label} ${i.dropCount}` : i.label]));
 
     return (
         <div className="history-panel">
@@ -52,7 +50,9 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ items, connections, onClose
                             <li key={item.id} className="history-row">
                                 <span className="history-badge">{item.dropOrder}</span>
                                 <span className="history-type-icon">{TYPE_ICON[item.type] ?? '?'}</span>
-                                <span className="history-item-label">{item.label}</span>
+                                <span className="history-item-label">
+                                    {item.dropCount > 1 ? `${item.label} ${item.dropCount}` : item.label}
+                                </span>
                                 <span className="history-meta">{ordinal(item.dropOrder)}</span>
                             </li>
                         ))}

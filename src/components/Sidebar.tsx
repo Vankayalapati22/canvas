@@ -17,6 +17,11 @@ const PALETTE_ITEMS: PaletteItem[] = [
     { type: 'image', label: 'Diamond', color: '#38bdf8', emoji: '🔷' },
     { type: 'image', label: 'Rocket', color: '#f87171', emoji: '🚀' },
     { type: 'image', label: 'Fire', color: '#fb923c', emoji: '🔥' },
+    // Database items
+    { type: 'postgresql', label: 'PostgreSQL', color: '#336791' },
+    { type: 'azuresql', label: 'Azure SQL', color: '#0078D4' },
+    { type: 'mysql', label: 'MySQL', color: '#00758F' },
+    { type: 'oracle', label: 'Oracle', color: '#F80000' },
 ];
 
 // ── Small shape preview SVGs ──────────────────────────────────────────────────
@@ -42,23 +47,35 @@ function ShapeIcon({ type, color }: { type: ItemType; color: string }) {
             <text x="9" y="13" textAnchor="middle" fontSize="10" fontWeight="700" fill={color}>T</text>
         </svg>
     );
+    // Generic Database Icon
+    if (['postgresql', 'azuresql', 'mysql', 'oracle'].includes(type)) {
+        return (
+            <svg width="18" height="18" viewBox="0 0 18 18">
+                <path d="M9 2c4 0 7.5 1.5 7.5 3.5S13 9 9 9 1.5 7.5 1.5 5.5 5 2 9 2z" fill={color} fillOpacity="0.3" stroke={color} strokeWidth="1.2" />
+                <path d="M1.5 5.5v7c0 2 3.5 3.5 7.5 3.5s7.5-1.5 7.5-3.5v-7" fill="none" stroke={color} strokeWidth="1.2" />
+                <path d="M1.5 9c0 2 3.5 3.5 7.5 3.5s7.5-1.5 7.5-3.5" fill="none" stroke={color} strokeWidth="1.2" />
+            </svg>
+        );
+    }
     return null;
 }
 
 interface SidebarProps {
     onDragStart: (item: PaletteItem) => void;
+    onItemClick: (item: PaletteItem) => void;
     items: DroppedItem[];
     connections: Connection[];
 }
 
 // ── Sidebar Component ─────────────────────────────────────────────────────────
-const Sidebar: React.FC<SidebarProps> = ({ onDragStart, items, connections }) => {
+const Sidebar: React.FC<SidebarProps> = ({ onDragStart, onItemClick, items, connections }) => {
     const shapes = PALETTE_ITEMS.filter(i => ['rect', 'circle', 'triangle'].includes(i.type));
     const texts = PALETTE_ITEMS.filter(i => i.type === 'text');
     const images = PALETTE_ITEMS.filter(i => i.type === 'image');
+    const databases = PALETTE_ITEMS.filter(i => ['postgresql', 'azuresql', 'mysql', 'oracle'].includes(i.type));
 
-    // Build id → label map
-    const labelMap = new Map(items.map(i => [i.id, i.label]));
+    // Build id → label map for connections
+    const labelMap = new Map(items.map(i => [i.id, i.dropCount > 1 ? `${i.label} ${i.dropCount}` : i.label]));
 
     const handleDragStart = (e: React.DragEvent, item: PaletteItem) => {
         e.dataTransfer.setData('application/json', JSON.stringify(item));
@@ -75,6 +92,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onDragStart, items, connections }) =>
                     className="palette-item"
                     draggable
                     onDragStart={e => handleDragStart(e, item)}
+                    onClick={() => onItemClick(item)}
                 >
                     {item.type === 'image' ? (
                         <span className="palette-emoji">{item.emoji}</span>
@@ -96,6 +114,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onDragStart, items, connections }) =>
             {renderGroup('Shapes', shapes)}
             {renderGroup('Text', texts)}
             {renderGroup('Images', images)}
+            {renderGroup('Database', databases)}
 
             {/* ── Live Connections Feed ─────────────────────────────────────── */}
             <div className="sidebar-connections">

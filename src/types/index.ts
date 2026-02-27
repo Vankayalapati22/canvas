@@ -1,7 +1,11 @@
 // ─── Shared TypeScript Types ─────────────────────────────────────────────────
 
 /** Types of items available in the sidebar palette */
-export type ItemType = 'rect' | 'circle' | 'triangle' | 'text' | 'image';
+export type ItemType = 'rect' | 'circle' | 'triangle' | 'text' | 'image'
+    | 'postgresql' | 'azuresql' | 'mysql' | 'oracle';
+
+/** Types of database/service items and shapes available in the palette bar */
+export type DatabaseType = 'postgresql' | 'azuresql' | 'mysql' | 'oracle' | 'shape-rectangle' | 'shape-circle' | 'shape-triangle';
 
 /** A palette item shown in the sidebar — draggable source */
 export interface PaletteItem {
@@ -22,7 +26,8 @@ export interface DroppedItem {
     y: number;
     size: number;      // Base size multiplier (default 1)
     zoom: number;      // Zoom multiplier (default 1)
-    dropOrder: number; // 1-based drop sequence number
+    dropOrder: number; // 1-based drop sequence number (global, immutable)
+    dropCount: number; // 1-based count of same-label drops (e.g. Star 1, Star 2)
 }
 
 /** A directional connection between two canvas items */
