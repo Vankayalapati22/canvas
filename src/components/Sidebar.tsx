@@ -3,57 +3,64 @@ import type { PaletteItem, ItemType, DroppedItem, Connection } from '../types';
 
 // ── Palette data ─────────────────────────────────────────────────────────────
 const PALETTE_ITEMS: PaletteItem[] = [
-    // Shapes
-    { type: 'rect', label: 'Rectangle', color: '#6366f1' },
-    { type: 'circle', label: 'Circle', color: '#22d3ee' },
-    { type: 'triangle', label: 'Triangle', color: '#f59e0b' },
-    // Text items
-    { type: 'text', label: 'Hello', color: '#34d399' },
-    { type: 'text', label: 'Label', color: '#f472b6' },
-    { type: 'text', label: 'Note', color: '#a78bfa' },
-    // Image / emoji items
-    { type: 'image', label: 'Picture', color: '#fb923c', emoji: '🖼️' },
-    { type: 'image', label: 'Star', color: '#fbbf24', emoji: '⭐' },
-    { type: 'image', label: 'Diamond', color: '#38bdf8', emoji: '🔷' },
-    { type: 'image', label: 'Rocket', color: '#f87171', emoji: '🚀' },
-    { type: 'image', label: 'Fire', color: '#fb923c', emoji: '🔥' },
-    // Database items
+    // Container
+    { type: 'box', label: 'Box', color: '#8b5cf6' },
+    // Database Connectors
     { type: 'postgresql', label: 'PostgreSQL', color: '#336791' },
     { type: 'azuresql', label: 'Azure SQL', color: '#0078D4' },
     { type: 'mysql', label: 'MySQL', color: '#00758F' },
     { type: 'oracle', label: 'Oracle', color: '#F80000' },
+    // Condition Nodes
+    { type: 'if-else', label: 'If / Else', color: '#10b981' },
+    { type: 'for-loop', label: 'For Loop', color: '#f59e0b' },
+    { type: 'for-each-loop', label: 'For Each', color: '#8b5cf6' },
 ];
 
 // ── Small shape preview SVGs ──────────────────────────────────────────────────
 function ShapeIcon({ type, color }: { type: ItemType; color: string }) {
-    if (type === 'rect') return (
-        <svg width="22" height="16" viewBox="0 0 22 16">
-            <rect x="1" y="1" width="20" height="14" rx="3" fill={color} fillOpacity="0.85" />
+    // Box / Container Icon
+    if (type === 'box') return (
+        <svg width="22" height="20" viewBox="0 0 22 20">
+            <rect x="1" y="1" width="20" height="18" rx="3" fill={color} fillOpacity="0.2" stroke={color} strokeWidth="1.5" strokeDasharray="4 2" />
+            <rect x="5" y="5" width="5" height="4" rx="1" fill={color} fillOpacity="0.5" />
+            <rect x="12" y="5" width="5" height="4" rx="1" fill={color} fillOpacity="0.5" />
+            <rect x="5" y="11" width="5" height="4" rx="1" fill={color} fillOpacity="0.5" />
         </svg>
     );
-    if (type === 'circle') return (
-        <svg width="18" height="18" viewBox="0 0 18 18">
-            <circle cx="9" cy="9" r="8" fill={color} fillOpacity="0.85" />
-        </svg>
-    );
-    if (type === 'triangle') return (
-        <svg width="20" height="18" viewBox="0 0 20 18">
-            <polygon points="10,1 19,17 1,17" fill={color} fillOpacity="0.85" />
-        </svg>
-    );
-    if (type === 'text') return (
-        <svg width="18" height="18" viewBox="0 0 18 18">
-            <rect x="1" y="1" width="16" height="16" rx="3" fill={color} fillOpacity="0.25" stroke={color} strokeWidth="1.2" />
-            <text x="9" y="13" textAnchor="middle" fontSize="10" fontWeight="700" fill={color}>T</text>
-        </svg>
-    );
-    // Generic Database Icon
+    // Database Icon
     if (['postgresql', 'azuresql', 'mysql', 'oracle'].includes(type)) {
         return (
             <svg width="18" height="18" viewBox="0 0 18 18">
                 <path d="M9 2c4 0 7.5 1.5 7.5 3.5S13 9 9 9 1.5 7.5 1.5 5.5 5 2 9 2z" fill={color} fillOpacity="0.3" stroke={color} strokeWidth="1.2" />
                 <path d="M1.5 5.5v7c0 2 3.5 3.5 7.5 3.5s7.5-1.5 7.5-3.5v-7" fill="none" stroke={color} strokeWidth="1.2" />
                 <path d="M1.5 9c0 2 3.5 3.5 7.5 3.5s7.5-1.5 7.5-3.5" fill="none" stroke={color} strokeWidth="1.2" />
+            </svg>
+        );
+    }
+    // If/Else Icon - Diamond
+    if (type === 'if-else') {
+        return (
+            <svg width="20" height="20" viewBox="0 0 20 20">
+                <polygon points="10,2 18,10 10,18 2,10" fill={color} fillOpacity="0.3" stroke={color} strokeWidth="1.5" />
+                <text x="10" y="13" textAnchor="middle" fontSize="10" fontWeight="700" fill={color}>?</text>
+            </svg>
+        );
+    }
+    // For Loop Icon - Rounded rectangle with loop arrow
+    if (type === 'for-loop') {
+        return (
+            <svg width="20" height="18" viewBox="0 0 20 18">
+                <rect x="1" y="1" width="18" height="16" rx="3" fill={color} fillOpacity="0.3" stroke={color} strokeWidth="1.5" />
+                <text x="10" y="12" textAnchor="middle" fontSize="12" fontWeight="700" fill={color}>⟲</text>
+            </svg>
+        );
+    }
+    // For Each Icon - Rounded rectangle with for-all symbol
+    if (type === 'for-each-loop') {
+        return (
+            <svg width="20" height="18" viewBox="0 0 20 18">
+                <rect x="1" y="1" width="18" height="16" rx="4" fill={color} fillOpacity="0.3" stroke={color} strokeWidth="1.5" />
+                <text x="10" y="12" textAnchor="middle" fontSize="11" fontWeight="700" fill={color}>∀</text>
             </svg>
         );
     }
@@ -69,10 +76,9 @@ interface SidebarProps {
 
 // ── Sidebar Component ─────────────────────────────────────────────────────────
 const Sidebar: React.FC<SidebarProps> = ({ onDragStart, onItemClick, items, connections }) => {
-    const shapes = PALETTE_ITEMS.filter(i => ['rect', 'circle', 'triangle'].includes(i.type));
-    const texts = PALETTE_ITEMS.filter(i => i.type === 'text');
-    const images = PALETTE_ITEMS.filter(i => i.type === 'image');
+    const container = PALETTE_ITEMS.filter(i => i.type === 'box');
     const databases = PALETTE_ITEMS.filter(i => ['postgresql', 'azuresql', 'mysql', 'oracle'].includes(i.type));
+    const conditions = PALETTE_ITEMS.filter(i => ['if-else', 'for-loop', 'for-each-loop'].includes(i.type));
 
     // Build id → label map for connections
     const labelMap = new Map(items.map(i => [i.id, i.dropCount > 1 ? `${i.label} ${i.dropCount}` : i.label]));
@@ -94,11 +100,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onDragStart, onItemClick, items, conn
                     onDragStart={e => handleDragStart(e, item)}
                     onClick={() => onItemClick(item)}
                 >
-                    {item.type === 'image' ? (
-                        <span className="palette-emoji">{item.emoji}</span>
-                    ) : (
-                        <ShapeIcon type={item.type} color={item.color} />
-                    )}
+                    <ShapeIcon type={item.type} color={item.color} />
                     {item.label}
                 </div>
             ))}
@@ -107,14 +109,13 @@ const Sidebar: React.FC<SidebarProps> = ({ onDragStart, onItemClick, items, conn
 
     return (
         <aside className="sidebar">
-            <h2 style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0', marginBottom: 8 }}>
+            <h2 className="palette-heading">
                 🎨 Palette
             </h2>
 
-            {renderGroup('Shapes', shapes)}
-            {renderGroup('Text', texts)}
-            {renderGroup('Images', images)}
-            {renderGroup('Database', databases)}
+            {renderGroup('Container', container)}
+            {renderGroup('Databases', databases)}
+            {renderGroup('Conditions', conditions)}
 
             {/* ── Live Connections Feed ─────────────────────────────────────── */}
             <div className="sidebar-connections">

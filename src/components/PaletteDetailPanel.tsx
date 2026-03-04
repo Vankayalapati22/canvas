@@ -20,7 +20,7 @@ const PaletteDetailPanel: React.FC<PaletteDetailPanelProps> = ({ item, onClose }
                 <div className="history-section-heading">
                     Details
                 </div>
-                <div style={{ padding: '16px', fontSize: '15px', color: '#5cdc07', lineHeight: '1.5' }}>
+                <div className="palette-detail-info-text">
                     You selected <strong>{item.label}</strong>.
                 </div>
             </div>

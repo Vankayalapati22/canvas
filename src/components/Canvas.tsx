@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
-import type { DroppedItem, PaletteItem, Connection } from '../types';
+import type { DroppedItem, PaletteItem, Connection, Group } from '../types';
 import CanvasItem from './CanvasItem';
 import ConnectionLayer from './ConnectionLayer';
+import GroupContainer from './GroupContainer';
 
 interface CanvasProps {
     items: DroppedItem[];
@@ -10,13 +11,19 @@ interface CanvasProps {
     connectFirst: string | null;
     canvasScale: number;
     selectedConnectionId: string | null;
+    selectedIds: string[];
+    groups: Group[];
     onDrop: (paletteItem: PaletteItem, x: number, y: number) => void;
-    onSelect: (id: string) => void;
+    onSelect: (id: string, multiSelect?: boolean) => void;
     onMoveItem: (id: string, x: number, y: number) => void;
     onDeselect: () => void;
     onSelectConnection: (id: string | null) => void;
-    onRemoveItem: (id: string) => void;  // NEW
-    onDetailItem: (id: string) => void;  // NEW
+    onRemoveItem: (id: string) => void;
+    onDetailItem: (id: string) => void;
+    onMoveGroup: (groupId: string, x: number, y: number) => void;
+    onUngroup: (groupId: string) => void;
+    onDropIntoBox: (paletteItem: PaletteItem, boxId: string) => void;
+    onRenameItem: (id: string, newLabel: string) => void;
 }
 
 // ── Canvas Component ──────────────────────────────────────────────────────────
@@ -27,6 +34,8 @@ const Canvas: React.FC<CanvasProps> = ({
     connectFirst,
     canvasScale,
     selectedConnectionId,
+    selectedIds,
+    groups,
     onDrop,
     onSelect,
     onMoveItem,
@@ -34,13 +43,22 @@ const Canvas: React.FC<CanvasProps> = ({
     onSelectConnection,
     onRemoveItem,
     onDetailItem,
+    onMoveGroup,
+    onUngroup,
+    onDropIntoBox,
+    onRenameItem,
 }) => {
     const [isDragOver, setIsDragOver] = useState(false);
     const wrapperRef = useRef<HTMLDivElement>(null);
 
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault();
-        e.dataTransfer.dropEffect = 'copy';
+        // dropEffect must match effectAllowed set in dragstart:
+        // - item/group moves use effectAllowed='move'
+        // - palette drops use effectAllowed='copy'
+        const types = Array.from(e.dataTransfer.types);
+        const isMove = types.includes('text/move-id') || types.includes('text/move-group-id');
+        e.dataTransfer.dropEffect = isMove ? 'move' : 'copy';
         setIsDragOver(true);
     };
 
@@ -53,27 +71,42 @@ const Canvas: React.FC<CanvasProps> = ({
         const rect = wrapperRef.current?.getBoundingClientRect();
         if (!rect) return;
 
+        const scrollLeft = wrapperRef.current?.scrollLeft ?? 0;
+        const scrollTop = wrapperRef.current?.scrollTop ?? 0;
+
+        // Moving a group
+        const moveGroupId = e.dataTransfer.getData('text/move-group-id');
+        if (moveGroupId) {
+            const offsetX = parseFloat(e.dataTransfer.getData('text/offset-x')) || 0;
+            const offsetY = parseFloat(e.dataTransfer.getData('text/offset-y')) || 0;
+            const newX = (e.clientX - rect.left + scrollLeft - offsetX) / canvasScale;
+            const newY = (e.clientY - rect.top + scrollTop - offsetY) / canvasScale;
+            onMoveGroup(moveGroupId, Math.max(0, newX), Math.max(0, newY));
+            return;
+        }
+
+        // Moving an item
         const moveId = e.dataTransfer.getData('text/move-id');
         if (moveId) {
             const offsetX = parseFloat(e.dataTransfer.getData('text/offset-x')) || 0;
             const offsetY = parseFloat(e.dataTransfer.getData('text/offset-y')) || 0;
-            const newX = (e.clientX - rect.left - offsetX) / canvasScale;
-            const newY = (e.clientY - rect.top - offsetY) / canvasScale;
+            const newX = (e.clientX - rect.left + scrollLeft - offsetX) / canvasScale;
+            const newY = (e.clientY - rect.top + scrollTop - offsetY) / canvasScale;
             onMoveItem(moveId, Math.max(0, newX), Math.max(0, newY));
             return;
         }
 
+        // Dropping a new palette item onto the canvas
         const raw = e.dataTransfer.getData('application/json');
         if (!raw) return;
         try {
             const paletteItem: PaletteItem = JSON.parse(raw);
-            const x = (e.clientX - rect.left - 40) / canvasScale;
-            const y = (e.clientY - rect.top - 40) / canvasScale;
+            const x = (e.clientX - rect.left + scrollLeft - 40) / canvasScale;
+            const y = (e.clientY - rect.top + scrollTop - 40) / canvasScale;
             onDrop(paletteItem, Math.max(0, x), Math.max(0, y));
         } catch { /* ignore */ }
     };
 
-    // Clicking the canvas background deselects both items and connections
     const handleCanvasClick = () => {
         if (!connectMode) {
             onDeselect();
@@ -82,6 +115,50 @@ const Canvas: React.FC<CanvasProps> = ({
     };
 
     const isEmpty = items.length === 0;
+
+    // ── Separate top-level items from box children ────────────────────────────
+    const topLevelItems = items.filter(i => !i.parentBoxId);
+
+    // Build box → children map
+    const boxChildrenMap = new Map<string, DroppedItem[]>();
+    for (const item of items) {
+        if (item.parentBoxId) {
+            const arr = boxChildrenMap.get(item.parentBoxId) ?? [];
+            arr.push(item);
+            boxChildrenMap.set(item.parentBoxId, arr);
+        }
+    }
+
+    // ── Split connections: top-level vs intra-box ─────────────────────────────
+    // Intra-box: both fromId AND toId are children of the same box
+    const childIdToBoxId = new Map<string, string>();
+    for (const item of items) {
+        if (item.parentBoxId) childIdToBoxId.set(item.id, item.parentBoxId);
+    }
+
+    const intraBoxConnsByBox = new Map<string, Connection[]>();
+    const topLevelConnections: Connection[] = [];
+
+    for (const conn of connections) {
+        const fromBox = childIdToBoxId.get(conn.fromId);
+        const toBox = childIdToBoxId.get(conn.toId);
+
+        if (fromBox && toBox && fromBox === toBox) {
+            // Both endpoints inside the SAME box → intra-box
+            const arr = intraBoxConnsByBox.get(fromBox) ?? [];
+            arr.push(conn);
+            intraBoxConnsByBox.set(fromBox, arr);
+        } else {
+            // Everything else → main ConnectionLayer.
+            // If an endpoint is a box-child, proxy it through its parent box
+            // so the line always connects to a visible top-level border.
+            const vFrom = fromBox ?? conn.fromId;
+            const vTo = toBox ?? conn.toId;
+            if (vFrom !== vTo) {
+                topLevelConnections.push({ ...conn, fromId: vFrom, toId: vTo });
+            }
+        }
+    }
 
     return (
         <div
@@ -102,30 +179,50 @@ const Canvas: React.FC<CanvasProps> = ({
                 </div>
             )}
 
-            {/* Scaled content wrapper — items + connections scale together */}
             <div
                 className="canvas-scaled"
-                style={{
-                    position: 'absolute',
-                    top: 0, left: 0,
-                    width: '100%', height: '100%',
-                    transform: `scale(${canvasScale})`,
-                    transformOrigin: 'top left',
-                }}
+                style={{ position: 'absolute', top: 0, left: 0, transform: `scale(${canvasScale})`, transformOrigin: 'top left' }}
             >
-                {items.map(item => (
-                    <CanvasItem
-                        key={item.id}
-                        item={item}
-                        onSelect={onSelect}
-                        onRemove={onRemoveItem}
-                        onDetail={onDetailItem}
-                    />
+                {/* Legacy GroupContainers (from old group system) */}
+                {groups.map(group => (
+                    <GroupContainer key={group.id} group={group} onUngroup={onUngroup} />
                 ))}
 
+                {/* Top-level items (not inside a box) */}
+                {topLevelItems.map(item => {
+                    const group = item.groupId ? groups.find(g => g.id === item.groupId) : null;
+                    const absoluteX = group ? item.x + group.x : item.x;
+                    const absoluteY = group ? item.y + group.y : item.y;
+                    const boxChildren = item.type === 'box' ? (boxChildrenMap.get(item.id) ?? []) : [];
+                    const intraConns = item.type === 'box' ? (intraBoxConnsByBox.get(item.id) ?? []) : [];
+
+                    return (
+                        <CanvasItem
+                            key={item.id}
+                            item={{ ...item, x: absoluteX, y: absoluteY }}
+                            isSelected={selectedIds.includes(item.id)}
+                            onSelect={onSelect}
+                            onRemove={onRemoveItem}
+                            onDetail={onDetailItem}
+                            onRenameItem={onRenameItem}
+                            children={boxChildren}
+                            onDropIntoBox={onDropIntoBox}
+                            connectMode={connectMode}
+                            connectFirst={connectFirst}
+                            intraBoxConnections={intraConns}
+                            allConnections={connections}
+                        />
+                    );
+                })}
+
+                {/* Main connection layer — only top-level connections */}
                 <ConnectionLayer
-                    items={items}
-                    connections={connections}
+                    items={topLevelItems.map(item => {
+                        const group = item.groupId ? groups.find(g => g.id === item.groupId) : null;
+                        return group ? { ...item, x: item.x + group.x, y: item.y + group.y } : item;
+                    })}
+                    allItems={items}
+                    connections={topLevelConnections}
                     selectedConnectionId={selectedConnectionId}
                     onSelectConnection={onSelectConnection}
                 />

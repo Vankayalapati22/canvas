@@ -1,30 +1,62 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { DroppedItem, Connection } from '../types';
 import { ordinal } from '../utils';
 
 // Type icons for display
 const TYPE_ICON: Record<string, string> = {
-    rect: '▭',
-    circle: '◯',
-    triangle: '△',
-    text: 'T',
-    image: '🖼',
+    box: '📦',
     postgresql: '🟦',
     azuresql: '☁️',
     mysql: '🟦',
     oracle: '🔴',
+    'if-else': '❓',
+    'for-loop': '⟲',
+    'for-each-loop': '∀',
 };
 
 interface HistoryPanelProps {
     items: DroppedItem[];
     connections: Connection[];
     onClose: () => void;
+    onUpdateItemLabel: (itemId: string, newLabel: string) => void;
 }
 
 // ── HistoryPanel ──────────────────────────────────────────────────────────────
-const HistoryPanel: React.FC<HistoryPanelProps> = ({ items, connections, onClose }) => {
-    // Build id → label map for showing connection labels with dropCount
-    const labelMap = new Map(items.map(i => [i.id, i.dropCount > 1 ? `${i.label} ${i.dropCount}` : i.label]));
+const HistoryPanel: React.FC<HistoryPanelProps> = ({ items, connections, onClose, onUpdateItemLabel }) => {
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editValue, setEditValue] = useState('');
+
+    // Helper to get display name (customLabel or auto-generated)
+    const getDisplayName = (item: DroppedItem) => 
+        item.customLabel ?? (item.dropCount > 1 ? `${item.label} ${item.dropCount}` : item.label);
+
+    // Build id → label map for showing connection labels
+    const labelMap = new Map(items.map(i => [i.id, getDisplayName(i)]));
+
+    const handleStartEdit = (item: DroppedItem) => {
+        setEditingId(item.id);
+        setEditValue(getDisplayName(item));
+    };
+
+    const handleSaveEdit = (itemId: string) => {
+        if (editValue.trim()) {
+            onUpdateItemLabel(itemId, editValue.trim());
+        }
+        setEditingId(null);
+    };
+
+    const handleCancelEdit = () => {
+        setEditingId(null);
+        setEditValue('');
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent, itemId: string) => {
+        if (e.key === 'Enter') {
+            handleSaveEdit(itemId);
+        } else if (e.key === 'Escape') {
+            handleCancelEdit();
+        }
+    };
 
     return (
         <div className="history-panel">
@@ -50,9 +82,69 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ items, connections, onClose
                             <li key={item.id} className="history-row">
                                 <span className="history-badge">{item.dropOrder}</span>
                                 <span className="history-type-icon">{TYPE_ICON[item.type] ?? '?'}</span>
-                                <span className="history-item-label">
-                                    {item.dropCount > 1 ? `${item.label} ${item.dropCount}` : item.label}
-                                </span>
+                                
+                                {editingId === item.id ? (
+                                    <div style={{ display: 'flex', gap: '4px', flex: 1, alignItems: 'center' }}>
+                                        <input
+                                            type="text"
+                                            value={editValue}
+                                            onChange={(e) => setEditValue(e.target.value)}
+                                            onKeyDown={(e) => handleKeyDown(e, item.id)}
+                                            autoFocus
+                                            style={{
+                                                flex: 1,
+                                                padding: '4px 8px',
+                                                fontSize: '12px',
+                                                border: '1px solid #4f46e5',
+                                                borderRadius: '4px',
+                                                background: '#1a1d27',
+                                                color: '#e2e8f0',
+                                                outline: 'none',
+                                            }}
+                                        />
+                                        <button
+                                            onClick={() => handleSaveEdit(item.id)}
+                                            title="Save changes"
+                                            style={{
+                                                padding: '4px 8px',
+                                                background: '#10b981',
+                                                border: 'none',
+                                                borderRadius: '4px',
+                                                color: '#fff',
+                                                fontSize: '14px',
+                                                cursor: 'pointer',
+                                            }}
+                                        >
+                                            ✓
+                                        </button>
+                                        <button
+                                            onClick={handleCancelEdit}
+                                            title="Cancel (restore default)"
+                                            style={{
+                                                padding: '4px 8px',
+                                                background: '#ef4444',
+                                                border: 'none',
+                                                borderRadius: '4px',
+                                                color: '#fff',
+                                                fontSize: '14px',
+                                                cursor: 'pointer',
+                                            }}
+                                        >
+                                            ✗
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <span 
+                                        className="history-item-label" 
+                                        onClick={() => handleStartEdit(item)}
+                                        style={{ cursor: 'pointer' }}
+                                        title="Click to edit name"
+                                    >
+                                        {getDisplayName(item)}
+                                        <span style={{ marginLeft: '6px', opacity: 0.5, fontSize: '10px' }}>✏️</span>
+                                    </span>
+                                )}
+                                
                                 <span className="history-meta">{ordinal(item.dropOrder)}</span>
                             </li>
                         ))}
