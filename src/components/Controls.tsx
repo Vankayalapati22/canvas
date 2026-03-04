@@ -1,16 +1,6 @@
 import React, { useRef } from 'react';
 import type { DroppedItem, Connection } from '../types';
-
-// ── Helper: ordinal suffix ─────────────────────────────────────────────────────
-function ordinal(n: number): string {
-    if (n >= 11 && n <= 13) return `${n}th`;
-    switch (n % 10) {
-        case 1: return `${n}st`;
-        case 2: return `${n}nd`;
-        case 3: return `${n}rd`;
-        default: return `${n}th`;
-    }
-}
+import { ordinal } from '../utils';
 
 // ── Shape of the JSON file loaded from disk ────────────────────────────────────
 interface CanvasSnapshot {
@@ -30,6 +20,8 @@ interface ConnInfo {
 
 interface ControlsProps {
     selectedItem: DroppedItem | null;
+    selectedItemsCount: number;
+    canGroup: boolean;
     canUndo: boolean;
     connectMode: boolean;
     hasConnections: boolean;
@@ -49,11 +41,14 @@ interface ControlsProps {
     onLoadData: (data: { items: DroppedItem[]; connections: Connection[] }) => void;
     onReverseConnection: (connId: string) => void;
     onToggleConnectionDirection: (connId: string) => void;
+    onCreateGroup: () => void;
 }
 
 // ── Controls Component ────────────────────────────────────────────────────────
 const Controls: React.FC<ControlsProps> = ({
     selectedItem,
+    selectedItemsCount,
+    canGroup,
     canUndo,
     connectMode,
     hasConnections,
@@ -73,6 +68,7 @@ const Controls: React.FC<ControlsProps> = ({
     onLoadData,
     onReverseConnection,
     onToggleConnectionDirection,
+    onCreateGroup,
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -88,7 +84,24 @@ const Controls: React.FC<ControlsProps> = ({
                     alert('Invalid canvas file — missing items or connections.');
                     return;
                 }
-                onLoadData({ items: data.items, connections: data.connections });
+
+                // ── v2 hierarchical format: flatten children back into the flat list ──
+                // Each top-level item may have a `children` array (v2) or a `parentBoxId` (v1)
+                type HierarchicalItem = DroppedItem & { children?: DroppedItem[] };
+                const flatItems: DroppedItem[] = [];
+
+                for (const topItem of data.items as HierarchicalItem[]) {
+                    const { children, ...item } = topItem;
+                    flatItems.push(item as DroppedItem);
+                    if (Array.isArray(children)) {
+                        // v2: restore parentBoxId on each child
+                        for (const child of children) {
+                            flatItems.push({ ...child, parentBoxId: item.id });
+                        }
+                    }
+                }
+
+                onLoadData({ items: flatItems, connections: data.connections });
             } catch {
                 alert('Failed to parse the JSON file. Please choose a valid canvas save file.');
             } finally {
@@ -97,6 +110,7 @@ const Controls: React.FC<ControlsProps> = ({
         };
         reader.readAsText(file);
     };
+
 
     return (
         <div className="controls">
@@ -113,6 +127,18 @@ const Controls: React.FC<ControlsProps> = ({
             {/* ── Layout ───────────────────────────────── */}
             <button className="ctrl-btn" onClick={onAutoAlign} title="Auto-align all items in a row">
                 ⊞ Auto Align
+            </button>
+
+            {/* ── Group selected items ─────────────────── */}
+            <button
+                className="ctrl-btn group-btn"
+                onClick={onCreateGroup}
+                disabled={!canGroup}
+                title={canGroup
+                    ? `Group all items of the same type as selected item`
+                    : "Select an item to group all items of that type"}
+            >
+                📦 Group
             </button>
 
             {/* ── History panel toggle ─────────────────── */}
@@ -141,7 +167,7 @@ const Controls: React.FC<ControlsProps> = ({
                 ref={fileInputRef}
                 type="file"
                 accept=".json,application/json"
-                style={{ display: 'none' }}
+                className="d-none"
                 onChange={handleFileChange}
             />
 
@@ -151,7 +177,7 @@ const Controls: React.FC<ControlsProps> = ({
             <button className="ctrl-btn" onClick={onZoomOut} title="Zoom out canvas">
                 − Zoom Out
             </button>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#a5b4fc', minWidth: 42, textAlign: 'center' }}>
+            <span className="ctrl-zoom-label">
                 {Math.round(canvasScale * 100)}%
             </span>
             <button className="ctrl-btn" onClick={onZoomIn} title="Zoom in canvas">
@@ -215,21 +241,29 @@ const Controls: React.FC<ControlsProps> = ({
                         </span>
                         &nbsp;
                         <span>{selectedConnInfo.from}</span>
-                        <span style={{ color: '#6b7280', margin: '0 4px' }}>
+                        <span className="ctrl-conn-sep">
                             {selectedConnInfo.direction === 'one-way' ? '→' : '↔'}
                         </span>
                         <span>{selectedConnInfo.to}</span>
+                    </>
+                ) : selectedItemsCount > 1 ? (
+                    <>
+                        Selected: <span className="ctrl-sel-count">{selectedItemsCount} items</span>
+                        &nbsp;
+                        <span className="ctrl-meta">
+                            (Ctrl+Click to multi-select)
+                        </span>
                     </>
                 ) : selectedItem ? (
                     <>
                         Selected: <span>{selectedItem.label}</span>
                         &nbsp;
-                        <span style={{ color: '#6b7280', fontSize: 11 }}>
+                        <span className="ctrl-meta">
                             ({ordinal(selectedItem.dropOrder)} dropped)
                         </span>
                     </>
                 ) : (
-                    <span style={{ color: '#4b5563' }}>No item selected</span>
+                    <span className="ctrl-no-sel">No item selected</span>
                 )}
             </div>
         </div>

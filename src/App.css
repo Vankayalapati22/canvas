@@ -7,6 +7,24 @@
     background: #0f1117;
 }
 
+.canvas {
+    position: relative;
+    flex: 1;
+    overflow: auto;
+    background: #181a23;
+    min-width: 0;
+    min-height: 0;
+}
+
+.canvas-scaled {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4000px;
+    height: 4000px;
+    /* transform and transformOrigin are set inline in JSX */
+}
+
 /* ── Sidebar ─────────────────────────────────────────────────────────────── */
 .sidebar {
     width: 220px;
@@ -67,12 +85,6 @@
 
 .palette-item svg {
     flex-shrink: 0;
-}
-
-.palette-emoji {
-    font-size: 20px;
-    width: 24px;
-    text-align: center;
 }
 
 /* ── Sidebar Connections Feed ─────────────────────────────────────────────── */
@@ -342,6 +354,22 @@
     color: #fff;
 }
 
+.ctrl-btn.group-btn {
+    border-color: #7c3aed;
+    color: #c4b5fd;
+}
+
+.ctrl-btn.group-btn:hover:not(:disabled) {
+    background: #2e1065;
+    border-color: #8b5cf6;
+    color: #ddd6fe;
+}
+
+.ctrl-btn.group-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
 .selected-info {
     margin-left: auto;
     font-size: 12px;
@@ -385,26 +413,33 @@
 .canvas-wrapper {
     flex: 1;
     position: relative;
-    overflow: hidden;
+    overflow: auto;
     background:
         radial-gradient(circle at 50% 50%, #1a1f35 0%, #0f1117 100%);
 }
 
-/* Dot grid pattern */
+/* Dot grid — large so it covers the full scrollable area */
 .canvas-wrapper::before {
     content: '';
     position: absolute;
-    inset: 0;
+    top: 0;
+    left: 0;
+    width: 4000px;
+    height: 4000px;
     background-image: radial-gradient(#2d3148 1px, transparent 1px);
     background-size: 28px 28px;
     pointer-events: none;
     opacity: 0.6;
+    z-index: 0;
 }
 
 .canvas {
     position: absolute;
-    inset: 0;
-    overflow: hidden;
+    top: 0;
+    left: 0;
+    width: 4000px;
+    height: 4000px;
+    overflow: visible;
 }
 
 .canvas.drag-over {
@@ -436,111 +471,178 @@
 .canvas-item {
     position: absolute;
     cursor: pointer;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
     user-select: none;
-    transition: filter 0.15s ease;
+    border: none;
+    outline: none;
+    background: none;
+    padding: 0;
 }
 
-.canvas-item:hover {
-    filter: brightness(1.15);
-}
-
-.canvas-item.selected .item-inner {
-    outline: 2.5px solid #6366f1;
-    outline-offset: 4px;
-    border-radius: 4px;
-}
-
-.item-inner {
+/* ── Item Card: outer wrapper ─────────────────────────────────────────────── */
+.item-card {
     display: flex;
     flex-direction: column;
+    border-radius: 10px;
+    overflow: visible;
+    width: 110px;
+    /* fixed — must match CARD_W in cardDimensions.ts */
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.canvas-item:hover .item-card {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(79, 70, 229, 0.3);
+}
+
+/* ── Selected state for canvas items ─────────────────────────────────────── */
+.canvas-item.selected .item-card {
+    box-shadow: 0 0 0 3px #818cf8, 0 8px 28px rgba(129, 140, 248, 0.4);
+    outline: 2px solid #818cf8;
+    outline-offset: 2px;
+}
+
+/* ── TOP BOX: name + ✔ tick ──────────────────────────────────────────────── */
+.item-card-header {
+    display: flex;
     align-items: center;
     justify-content: center;
     gap: 4px;
-    border-radius: 4px;
-    transition: transform 0.1s ease;
+    padding: 6px 8px;
+    background: #22263a;
+    border: 1px solid #3d4268;
+    border-bottom: none;
+    border-radius: 10px 10px 0 0;
 }
 
-.item-label {
-    font-size: 11px;
-    font-weight: 600;
+/* ✔ tick — inside the header, left side, always visible */
+.item-sym-tick {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #16a34a;
+    color: #fff;
+    font-size: 9px;
+    font-weight: 900;
+    flex-shrink: 0;
+    box-shadow: 0 0 6px rgba(22, 163, 74, 0.55);
+    line-height: 1;
+}
+
+.item-card-name {
+    font-size: 12px;
+    font-weight: 700;
     color: #e2e8f0;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
-    margin-top: 4px;
-    max-width: 100px;
-    text-align: center;
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    max-width: 100px;
+}
+
+/* ── BOTTOM BOX: icon + name/count + hover controls ─────────────────────── */
+.item-card-body {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 10px 8px;
+    background: #1a1d2e;
+    border: 1px solid #3d4268;
+    border-radius: 0 0 10px 10px;
+    min-height: 72px;
+    /* fixed — must match CARD_BODY_H in cardDimensions.ts */
+    transition: background 0.15s ease, border-color 0.15s ease;
+    overflow: visible;
+}
+
+.item-card-body.hovered {
+    background: #1e2240;
+    border-color: #6366f1;
+}
+
+/* The icon / shape / emoji */
+.item-card-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.item-card-body.hovered .item-card-icon {
+    opacity: 0.45;
+    transform: scale(0.85);
+}
+
+/* "Star 2" label inside the body, below the icon */
+.item-card-body-label {
+    font-size: 9px;
+    font-weight: 700;
+    color: #64748b;
+    margin-top: 2px;
+    text-align: center;
+    letter-spacing: 0.4px;
+    pointer-events: none;
     white-space: nowrap;
-    pointer-events: none;
 }
 
-.item-emoji {
-    font-size: 36px;
-    line-height: 1;
-}
-
-/* Drop-order badge — small numbered circle on every canvas item */
-.item-order-badge {
+/* ✖ Remove — hover-only, absolute top-right of the body */
+.item-sym-remove {
     position: absolute;
-    top: -8px;
-    left: -8px;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: #4f46e5;
-    color: #fff;
-    font-size: 10px;
-    font-weight: 700;
+    top: -10px;
+    right: -10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 2px solid #1a1d27;
-    z-index: 10;
-    pointer-events: none;
-    line-height: 1;
-}
-
-/* Delete button — top right of selected item */
-.item-delete-btn {
-    position: absolute;
-    top: -8px;
-    right: -8px;
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
-    background: #ef4444;
-    color: #fff;
-    font-size: 10px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid #1a1d27;
-    z-index: 11;
-    cursor: pointer;
-    line-height: 1;
-    padding: 0;
-    transition: transform 0.1s ease, background 0.15s;
-}
-
-.item-delete-btn:hover {
+    border: none;
+    outline: none;
     background: #dc2626;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 900;
+    cursor: pointer;
+    pointer-events: all;
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.55);
+    animation: symPop 0.15s ease;
+    z-index: 20;
+    line-height: 1;
+}
+
+.item-sym-remove:hover {
+    background: #ef4444;
     transform: scale(1.15);
 }
 
-.item-text-box {
-    background: #22263a;
-    border: 1.5px solid #4f46e5;
-    border-radius: 8px;
-    padding: 10px 16px;
-    font-size: 14px;
-    font-weight: 600;
-    color: #e2e8f0;
-    white-space: nowrap;
+
+
+@keyframes symPop {
+    from {
+        transform: scale(0.5);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes symPop {
+    from {
+        transform: scale(0.5);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
 
 /* ── Connection SVG Layer ─────────────────────────────────────────────────── */
@@ -845,4 +947,979 @@
 
 .history-conn-card.two-way .history-conn-tip {
     color: #f9a8d4;
+}
+
+/* ── Palette Bar (Right side) ────────────────────────────────────────────── */
+.palette-bar {
+    width: 80px;
+    min-width: 80px;
+    background: linear-gradient(180deg, #1a1d27 0%, #16181f 100%);
+    border-left: 1px solid #2d3148;
+    display: flex;
+    flex-direction: column;
+    padding: 12px 8px;
+    gap: 0;
+    overflow-y: auto;
+    user-select: none;
+    align-items: center;
+}
+
+.palette-bar-title {
+    width: 100%;
+    text-align: center;
+    padding: 8px 0;
+    margin-bottom: 4px;
+}
+
+.palette-bar-title h3 {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: #6b7280;
+    margin: 0;
+    padding: 0;
+}
+
+.palette-bar-items {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    align-items: center;
+}
+
+.palette-bar-item {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 8px;
+    padding: 4px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.palette-bar-item:hover {
+    background: rgba(79, 70, 229, 0.15);
+    transform: scale(1.05);
+}
+
+.palette-bar-item:active {
+    transform: scale(0.95);
+}
+
+.palette-bar-button {
+    transition: all 0.2s ease !important;
+}
+
+.palette-bar-divider {
+    width: 100%;
+    height: 1px;
+    background: #2d3148;
+    margin: 12px 0;
+}
+
+/* ── Palette Detail Panel (Right-side info) ──────────────────────── */
+.palette-detail-panel {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 320px;
+    background: #0f1117;
+    border-left: 1px solid #2d3148;
+    display: flex;
+    flex-direction: column;
+    z-index: 1000;
+    animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.palette-detail-panel-header {
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+    color: white !important;
+    padding: 12px 16px !important;
+    border-radius: 0 !important;
+}
+
+.palette-detail-panel-header .p-panel-header {
+    background: transparent !important;
+}
+
+.palette-detail-panel-content {
+    background: #1a1d27 !important;
+    color: #e2e8f0 !important;
+    padding: 16px !important;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.palette-detail-content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.palette-detail-content h3 {
+    margin-top: 0;
+    font-size: 1.3rem;
+    color: #6366f1;
+    font-weight: 600;
+}
+
+.palette-detail-content p {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: #cbd5e1;
+    margin: 12px 0;
+}
+
+.palette-detail-message {
+    background: #1e3a5f !important;
+    border: 1px solid #1e40af !important;
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin-top: 16px;
+    color: #bfdbfe;
+    font-weight: 500;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+/* ── Details Panel (bottom slide-up, shown on ➜ click) ────────────────────── */
+.details-panel {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #1a1d27;
+    border-top: 1px solid #4f46e5;
+    box-shadow: 0 -4px 32px rgba(79, 70, 229, 0.25);
+    z-index: 300;
+    animation: slideUpPanel 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+    display: flex;
+    flex-direction: column;
+}
+
+@keyframes slideUpPanel {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.details-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    border-bottom: 1px solid #2d3148;
+    background: #16192a;
+}
+
+.details-panel-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #e2e8f0;
+    display: flex;
+    align-items: center;
+}
+
+.details-close-btn {
+    background: transparent;
+    border: none;
+    color: #6b7280;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: color 0.15s, background 0.15s;
+}
+
+.details-close-btn:hover {
+    color: #e2e8f0;
+    background: #2d3148;
+}
+
+.details-panel-body {
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.details-panel-message {
+    font-size: 16px;
+    font-weight: 500;
+    color: #e2e8f0;
+}
+
+.details-panel-name {
+    color: #818cf8;
+    font-weight: 700;
+}
+
+.details-panel-meta {
+    font-size: 11px;
+    color: #4b5563;
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+/* ── Group Container ────────────────────────────────────────────────────── */
+.group-container {
+    pointer-events: auto;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.group-container:hover {
+    border-color: #6366f1 !important;
+    background-color: rgba(99, 102, 241, 0.08) !important;
+}
+
+/* ── Box Card ─────────────────────────────────────────────────────────────── */
+.box-card {
+    display: flex;
+    flex-direction: column;
+    border-radius: 12px;
+    border: 2px dashed #7c3aed;
+    background: rgba(139, 92, 246, 0.07);
+    min-width: 200px;
+    max-width: 340px;
+    box-shadow: 0 4px 24px rgba(139, 92, 246, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+    position: relative;
+    overflow: visible;
+}
+
+.box-card.drag-over {
+    border-color: #a78bfa;
+    background: rgba(139, 92, 246, 0.16);
+    box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.35), 0 8px 32px rgba(139, 92, 246, 0.35);
+}
+
+.box-card.selected {
+    border-color: #a78bfa;
+    box-shadow: 0 0 0 3px #a78bfa, 0 8px 28px rgba(167, 139, 250, 0.4);
+}
+
+/* ── Box connect-mode states ────────────────────────────────────────────── */
+.box-card.connect-mode-box {
+    cursor: pointer;
+    border-color: rgba(6, 182, 212, 0.5);
+    transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.box-card.connect-mode-box:hover {
+    border-color: #06b6d4;
+    box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.4), 0 4px 16px rgba(6, 182, 212, 0.25);
+}
+
+.box-card.connect-first-box {
+    border-color: #06b6d4 !important;
+    box-shadow: 0 0 0 3px #06b6d4, 0 0 18px rgba(6, 182, 212, 0.55) !important;
+    animation: box-connect-pulse 1.2s infinite alternate;
+}
+
+@keyframes box-connect-pulse {
+    from {
+        box-shadow: 0 0 0 3px #06b6d4, 0 0 12px rgba(6, 182, 212, 0.4);
+    }
+
+    to {
+        box-shadow: 0 0 0 4px #22d3ee, 0 0 24px rgba(6, 182, 212, 0.7);
+    }
+}
+
+.box-connect-indicator {
+    margin-left: auto;
+    font-size: 13px;
+    opacity: 0.9;
+    animation: conn-icon-blink 1.5s infinite alternate;
+}
+
+@keyframes conn-icon-blink {
+    from {
+        opacity: 0.6;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* ── Box Card Header ─────────────────────────────────────────────────────── */
+.box-card-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(139, 92, 246, 0.25);
+    background: rgba(139, 92, 246, 0.12);
+    border-radius: 10px 10px 0 0;
+    position: relative;
+    cursor: grab;
+    user-select: none;
+}
+
+.box-card-header:active {
+    cursor: grabbing;
+}
+
+.box-drag-handle {
+    font-size: 14px;
+    color: rgba(196, 181, 253, 0.5);
+    letter-spacing: -1px;
+    flex-shrink: 0;
+    transition: color 0.15s;
+}
+
+.box-card-header:hover .box-drag-handle {
+    color: #c4b5fd;
+}
+
+.box-card-icon-sm {
+    font-size: 14px;
+    line-height: 1;
+}
+
+.box-card-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #c4b5fd;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.box-card-count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    border-radius: 99px;
+    background: #7c3aed;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 0 5px;
+}
+
+/* ✖ remove button on the box header */
+.box-remove-btn {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: none;
+    background: #dc2626;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.55);
+    animation: symPop 0.15s ease;
+    z-index: 30;
+    line-height: 1;
+}
+
+.box-remove-btn:hover {
+    background: #ef4444;
+    transform: scale(1.15);
+}
+
+/* ── Box Card Body ───────────────────────────────────────────────────────── */
+.box-card-body {
+    padding: 10px;
+    min-height: 80px;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+}
+
+/* ── Drop hint (shown when box is empty) ─────────────────────────────────── */
+.box-drop-hint {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    border: 1.5px dashed rgba(139, 92, 246, 0.4);
+    border-radius: 8px;
+    padding: 14px 10px;
+    color: #7c3aed;
+    font-size: 11px;
+    font-weight: 500;
+    opacity: 0.7;
+    transition: opacity 0.2s, border-color 0.2s, background 0.2s;
+}
+
+.box-drop-hint.active {
+    opacity: 1;
+    border-color: #a78bfa;
+    background: rgba(139, 92, 246, 0.10);
+    color: #c4b5fd;
+}
+
+/* ── Mini card grid inside box ───────────────────────────────────────────── */
+.box-card-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+    align-items: flex-start;
+    align-content: flex-start;
+}
+
+/* ── Mini card (child item inside box) ──────────────────────────────────── */
+.box-mini-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    background: #22263a;
+    border: 1px solid #3d4268;
+    border-radius: 8px;
+    padding: 7px 8px 5px;
+    min-width: 68px;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.box-mini-card:hover {
+    border-color: #8b5cf6;
+    background: #2a2f4a;
+}
+
+.box-mini-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+}
+
+.box-mini-label {
+    font-size: 9px;
+    font-weight: 700;
+    color: #94a3b8;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 64px;
+}
+
+/* ✖ mini remove button inside box */
+.box-mini-remove {
+    position: absolute;
+    top: -7px;
+    right: -7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: none;
+    background: #dc2626;
+    color: #fff;
+    font-size: 8px;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 1px 5px rgba(220, 38, 38, 0.5);
+    animation: symPop 0.12s ease;
+    z-index: 20;
+    line-height: 1;
+}
+
+.box-mini-remove:hover {
+    background: #ef4444;
+    transform: scale(1.2);
+}
+
+/* ── Add-more slot at end of grid ────────────────────────────────────────── */
+.box-add-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    min-height: 56px;
+    border: 1.5px dashed rgba(139, 92, 246, 0.35);
+    border-radius: 8px;
+    opacity: 0.5;
+    transition: opacity 0.2s, border-color 0.2s, background 0.2s;
+}
+
+.box-add-more.active {
+    opacity: 1;
+    border-color: #a78bfa;
+    background: rgba(139, 92, 246, 0.10);
+}
+
+/* ── Box body relative wrapper (hosts the SVG overlay) ───────────────────── */
+.box-body-relative {
+    position: relative;
+    width: 100%;
+}
+
+/* ── Mini-card FIXED dimensions — must match JS MINI_W / MINI_H constants ── */
+.box-mini-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    background: #22263a;
+    border: 1px solid #3d4268;
+    border-radius: 8px;
+    padding: 7px 8px 5px;
+    width: 76px;
+    /* matches MINI_W */
+    height: 70px;
+    /* matches MINI_H */
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+    cursor: default;
+    overflow: visible;
+    flex-shrink: 0;
+}
+
+.box-mini-card:hover {
+    border-color: #8b5cf6;
+    background: #2a2f4a;
+}
+
+/* In connect mode, mini-cards are clickable */
+.box-mini-card.connect-mode-hover {
+    cursor: pointer;
+    border-color: #6366f1;
+}
+
+.box-mini-card.connect-mode-hover:hover {
+    border-color: #a78bfa;
+    background: #2a2f4a;
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.3);
+}
+
+/* Highlighted first pick in connect mode */
+.box-mini-card.connect-first {
+    border-color: #4f46e5 !important;
+    background: rgba(79, 70, 229, 0.2) !important;
+    box-shadow: 0 0 0 3px #4f46e5 !important;
+}
+
+/* Pulsing ring overlay for connect-first state */
+.box-mini-connect-ring {
+    position: absolute;
+    inset: -4px;
+    border-radius: 10px;
+    border: 2px solid #6366f1;
+    animation: connectPulse 1.2s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes connectPulse {
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.5;
+        transform: scale(1.05);
+    }
+}
+
+/* ── Connect-mode hint banner at bottom of box ───────────────────────────── */
+.box-connect-hint {
+    padding: 6px 12px;
+    background: rgba(79, 70, 229, 0.15);
+    border-top: 1px solid rgba(79, 70, 229, 0.3);
+    border-radius: 0 0 10px 10px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #a5b4fc;
+    text-align: center;
+    letter-spacing: 0.3px;
+}
+
+/* Override old box-mini-card (if duplicate) — use fix */
+.box-card-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    /* matches MINI_GAP */
+    padding: 10px;
+    /* matches BOX_PAD */
+    align-items: flex-start;
+    align-content: flex-start;
+    position: relative;
+    z-index: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PRIMEREACT / PRIMEFLEX MIGRATION — CSS classes replacing inline styles
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Pointer-events utilities ────────────────────────────────────────────── */
+.pe-none {
+    pointer-events: none !important;
+}
+
+.pe-auto {
+    pointer-events: auto !important;
+}
+
+.pe-stroke {
+    pointer-events: stroke !important;
+}
+
+/* SVG-only */
+
+/* ── Display utilities (supplement PrimeFlex for edge cases) ─────────────── */
+.d-none {
+    display: none !important;
+}
+
+/* ── ConnectionLayer SVG ─────────────────────────────────────────────────── */
+.svg-conn-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+/* ── SVG path / shape pointer-event classes ──────────────────────────────── */
+.svg-hit-area {
+    cursor: pointer;
+    pointer-events: stroke;
+}
+
+.svg-visual {
+    pointer-events: none;
+}
+
+/* ── CanvasItem: IntraBox SVG overlay ────────────────────────────────────── */
+.intra-svg-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    overflow: visible;
+    z-index: 10;
+}
+
+/* ── CanvasItem: icon pointer-guard ─────────────────────────────────────── */
+.item-icon-wrap {
+    pointer-events: none;
+}
+
+/* ── Controls: zoom label ────────────────────────────────────────────────── */
+.ctrl-zoom-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #a5b4fc;
+    min-width: 42px;
+    text-align: center;
+}
+
+/* ── Controls: connection arrow separator ────────────────────────────────── */
+.ctrl-conn-sep {
+    color: #6b7280;
+    margin: 0 4px;
+}
+
+/* ── Controls: multi-select highlight ───────────────────────────────────── */
+.ctrl-sel-count {
+    color: #818cf8;
+    font-weight: 700;
+}
+
+/* ── Controls: secondary meta text ──────────────────────────────────────── */
+.ctrl-meta {
+    color: #6b7280;
+    font-size: 11px;
+}
+
+/* ── Controls: no-selection placeholder ─────────────────────────────────── */
+.ctrl-no-sel {
+    color: #4b5563;
+}
+
+/* ── Sidebar: palette heading ────────────────────────────────────────────── */
+.palette-heading {
+    font-size: 13px;
+    font-weight: 700;
+    color: #e2e8f0;
+    margin-bottom: 8px;
+}
+
+/* ── PaletteDetailPanel ──────────────────────────────────────────────────── */
+.palette-detail-info-text {
+    padding: 16px;
+    font-size: 15px;
+    color: #5cdc07;
+    line-height: 1.5;
+}
+
+/* ── DetailsPanel: info icon ────────────────────────────────────────────── */
+.detail-icon-gap {
+    margin-right: 8px;
+    color: #6366f1;
+}
+
+/* ── GroupContainer ──────────────────────────────────────────────────────── */
+.group-label {
+    position: absolute;
+    top: -25px;
+    left: 8px;
+    padding: 4px 12px;
+    background: #818cf8;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 6px 6px 0 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.group-ungroup-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 50%;
+    background: #ef4444;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.group-ungroup-btn:hover {
+    background: #dc2626;
+}
+
+/* ── Inline rename input (card body-label and box header) ──────────────── */
+.item-rename-input {
+    background: transparent;
+    border: none;
+    border-bottom: 1.5px solid #818cf8;
+    color: #e2e8f0;
+    font-size: inherit;
+    font-family: inherit;
+    font-weight: inherit;
+    width: 100%;
+    max-width: 140px;
+    padding: 0 2px;
+    outline: none;
+    caret-color: #818cf8;
+    text-align: center;
+}
+
+.item-rename-input:focus {
+    border-bottom-color: #a5b4fc;
+    box-shadow: 0 1px 0 0 #a5b4fc;
+}
+
+/* Cursor hint on hoverable name spans */
+.box-card-title:hover,
+.item-card-body-label:hover {
+    text-decoration: underline dotted rgba(165, 180, 252, 0.5);
+    cursor: text;
+}
+
+/* ── DetailsPanel renamed name rows ─────────────────────────────────────── */
+.details-name-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0 10px;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+    margin-bottom: 8px;
+}
+
+.details-name-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #6366f1;
+    min-width: 56px;
+}
+
+.details-name-value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #e2e8f0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.details-name-value:hover {
+    color: #a5b4fc;
+}
+
+.details-edit-hint {
+    font-size: 0.75rem;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.details-name-value:hover .details-edit-hint {
+    opacity: 1;
+}
+
+.details-name-input {
+    flex: 1;
+    background: rgba(99, 102, 241, 0.08);
+    border: none;
+    border-bottom: 2px solid #6366f1;
+    color: #e2e8f0;
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: inherit;
+    padding: 2px 6px;
+    outline: none;
+    border-radius: 4px 4px 0 0;
+    caret-color: #818cf8;
+}
+
+.details-name-input:focus {
+    border-bottom-color: #a5b4fc;
+    background: rgba(99, 102, 241, 0.14);
+}
+
+.details-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 0;
+}
+
+.details-meta-key {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #64748b;
+    min-width: 56px;
+}
+
+.details-meta-val {
+    font-size: 0.85rem;
+    color: #94a3b8;
+}
+
+.details-rename-hint {
+    margin-top: 14px;
+    font-size: 0.72rem;
+    color: #475569;
+    text-align: center;
+    font-style: italic;
+}
+
+/* ── If/Else second-path prompt toast ────────────────────────────────── */
+.ifelse-prompt-toast {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px;
+    background: rgba(30, 41, 59, 0.92);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(99, 102, 241, 0.4);
+    border-radius: 10px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(99, 102, 241, 0.15);
+    animation: ifelse-slide-in 0.35s ease-out;
+    max-width: 520px;
+}
+
+.ifelse-prompt-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.ifelse-prompt-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 0.82rem;
+    color: #e2e8f0;
+}
+
+.ifelse-prompt-text strong {
+    font-size: 0.9rem;
+    color: #a5b4fc;
+}
+
+.ifelse-prompt-skip {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    color: #fca5a5;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+
+.ifelse-prompt-skip:hover {
+    background: rgba(239, 68, 68, 0.3);
+}
+
+@keyframes ifelse-slide-in {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
 }
