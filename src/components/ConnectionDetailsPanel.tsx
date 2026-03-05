@@ -391,7 +391,7 @@ const ConnectionDetailsPanel: React.FC<ConnectionDetailsPanelProps> = ({
                         {connection.loopCurrentCount !== undefined && (
                             <div style={{ padding: '12px', background: '#eff6ff', border: '1px solid #93c5fd', borderRadius: '6px', marginBottom: '12px' }}>
                                 <div style={{ fontSize: '13px', fontWeight: '600', color: '#1e40af', marginBottom: '8px' }}>
-                                    Iteration Counter: {connection.loopCurrentCount} / {connection.loopIterations || loopIterations}
+                                    Iteration Counters: {connection.loopCurrentCount} / {connection.loopIterations || loopIterations}
                                 </div>
                                 <div style={{
                                     height: '10px',
@@ -438,17 +438,6 @@ const ConnectionDetailsPanel: React.FC<ConnectionDetailsPanelProps> = ({
                             )}
                         </div>
 
-                        {/* Loop Explanation */}
-                        <div style={{ padding: '10px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '6px' }}>
-                            <div style={{ fontSize: '12px', lineHeight: '1.6', color: '#166534' }}>
-                                <strong>How it works:</strong><br />
-                                1. Set the number of iterations above<br />
-                                2. Click "Start Loop" — it auto-iterates every 0.5s<br />
-                                3. Progress bar fills automatically<br />
-                                4. Loop completes when all iterations are done<br />
-                                5. Green line = active, Red line = completed/stopped
-                            </div>
-                        </div>
                     </div>
                 )}
 
@@ -499,16 +488,7 @@ const ConnectionDetailsPanel: React.FC<ConnectionDetailsPanelProps> = ({
                             style={{ width: '100%', marginBottom: '12px' }}
                         />
 
-                        {/* For Each Explanation */}
-                        <div style={{ padding: '10px', background: '#eff6ff', border: '1px solid #93c5fd', borderRadius: '6px' }}>
-                            <div style={{ fontSize: '12px', lineHeight: '1.6', color: '#1e3a8a' }}>
-                                <strong>How it works:</strong><br />
-                                1. Click "Process Next Item" for each record<br />
-                                2. Counter increments with each item processed<br />
-                                3. Click "Stop" when condition is satisfied<br />
-                                4. Green line shows active processing
-                            </div>
-                        </div>
+
                     </div>
                 )}
 
