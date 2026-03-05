@@ -391,7 +391,7 @@ const ConnectionDetailsPanel: React.FC<ConnectionDetailsPanelProps> = ({
                         {connection.loopCurrentCount !== undefined && (
                             <div style={{ padding: '12px', background: '#eff6ff', border: '1px solid #93c5fd', borderRadius: '6px', marginBottom: '12px' }}>
                                 <div style={{ fontSize: '13px', fontWeight: '600', color: '#1e40af', marginBottom: '8px' }}>
-                                    Iteration Counter: {connection.loopCurrentCount} / {connection.loopIterations || loopIterations}
+                                    Iteration Counters: {connection.loopCurrentCount} / {connection.loopIterations || loopIterations}
                                 </div>
                                 <div style={{
                                     height: '10px',
