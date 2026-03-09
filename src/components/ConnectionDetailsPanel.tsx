@@ -352,8 +352,8 @@ const ConnectionDetailsPanel: React.FC<ConnectionDetailsPanelProps> = ({
                                             Result: {evalResult ? '✅ TRUE' : '❌ FALSE'}
                                         </div>
                                         <div style={{ fontSize: '12px', color: '#6b7280', lineHeight: '1.5' }}>
-                                            • True path → <strong style={{ color: evalResult ? '#10b981' : '#ef4444' }}>{evalResult ? 'GREEN (data flows)' : 'RED (blocked)'}</strong><br />
-                                            • False path → <strong style={{ color: !evalResult ? '#10b981' : '#ef4444' }}>{!evalResult ? 'GREEN (data flows)' : 'RED (blocked)'}</strong>
+                                            • True paths → <strong style={{ color: evalResult ? '#10b981' : '#ef4444' }}>{evalResult ? 'GREEN (data flows)' : 'RED (blocked)'}</strong><br />
+                                            • False paths → <strong style={{ color: !evalResult ? '#10b981' : '#ef4444' }}>{!evalResult ? 'GREEN (data flows)' : 'RED (blocked)'}</strong>
                                         </div>
                                     </div>
                                 )}
