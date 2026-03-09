@@ -1,20 +1,38 @@
 import React, { useState, useRef } from 'react';
-import { InputText } from 'primereact/inputtext';
-import { InputNumber } from 'primereact/inputnumber';
-import type { DroppedItem, IfElseConfig, ForLoopConfig, ForEachLoopConfig } from '../types';
+import type { DroppedItem } from '../types';
 
 interface DetailsPanelProps {
     item: DroppedItem;
     onClose: () => void;
     onRenameItem?: (id: string, newLabel: string) => void;
-    onUpdateConditionConfig?: (itemId: string, config: IfElseConfig | ForLoopConfig | ForEachLoopConfig) => void;
+    onRemoveItem?: (id: string) => void;
+}
+
+// Property data structure
+interface PropertyField {
+    name: string;
+    type: string;
+    defaultValue: string | number;
+    checked: boolean;
 }
 
 // ── DetailsPanel — slides in from the right when an item is selected ──────────
-const DetailsPanel: React.FC<DetailsPanelProps> = ({ item, onClose, onRenameItem, onUpdateConditionConfig }) => {
+const DetailsPanel: React.FC<DetailsPanelProps> = ({ item, onClose, onRenameItem, onRemoveItem }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editValue, setEditValue] = useState('');
     const inputRef = useRef<HTMLInputElement>(null);
+
+    // Property fields with checkboxes
+    const [properties, setProperties] = useState<PropertyField[]>([
+        { name: 'filename', type: 'string', defaultValue: 'sample.csv', checked: false },
+        { name: 'noofitemsreceived', type: 'number', defaultValue: 0, checked: false },
+        { name: 'filestatus', type: 'string', defaultValue: 'completed', checked: false  },
+    ]);
+
+    // Property name editing state
+    const [editingPropertyIndex, setEditingPropertyIndex] = useState<number | null>(null);
+    const [editingPropertyValue, setEditingPropertyValue] = useState('');
+    const propertyInputRef = useRef<HTMLInputElement>(null);
 
     // Resolved display name: custom label wins over auto-generated
     const displayName = item.customLabel ?? (item.dropCount > 1 ? `${item.label} ${item.dropCount}` : item.label);
@@ -42,28 +60,47 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ item, onClose, onRenameItem
         if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
     };
 
-    // Condition configuration handlers
-    const handleIfElseConditionChange = (value: string) => {
-        if (onUpdateConditionConfig) {
-            onUpdateConditionConfig(item.id, { condition: value });
-        }
+    // Toggle checkbox for properties
+    const togglePropertyCheck = (index: number) => {
+        setProperties(prev => prev.map((prop, i) => 
+            i === index ? { ...prop, checked: !prop.checked } : prop
+        ));
     };
 
-    const handleForLoopIterationsChange = (value: number | null | undefined) => {
-        if (onUpdateConditionConfig && value !== null && value !== undefined) {
-            onUpdateConditionConfig(item.id, { 
-                iterations: value,
-                dataCount: item.forLoopConfig?.dataCount 
-            });
-        }
+    // Delete property from list
+    const deleteProperty = (index: number) => {
+        setProperties(prev => prev.filter((_, i) => i !== index));
     };
 
-    const handleForEachConditionChange = (value: string) => {
-        if (onUpdateConditionConfig) {
-            onUpdateConditionConfig(item.id, { 
-                condition: value,
-                processedCount: item.forEachLoopConfig?.processedCount 
-            });
+    // Property name editing functions
+    const startEditingProperty = (index: number, currentName: string) => {
+        setEditingPropertyIndex(index);
+        setEditingPropertyValue(currentName);
+        setTimeout(() => propertyInputRef.current?.select(), 0);
+    };
+
+    const commitPropertyEdit = () => {
+        if (editingPropertyIndex !== null && editingPropertyValue.trim()) {
+            setProperties(prev => prev.map((prop, i) => 
+                i === editingPropertyIndex ? { ...prop, name: editingPropertyValue.trim() } : prop
+            ));
+        }
+        setEditingPropertyIndex(null);
+    };
+
+    const cancelPropertyEdit = () => {
+        setEditingPropertyIndex(null);
+    };
+
+    const handlePropertyKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') { e.preventDefault(); commitPropertyEdit(); }
+        if (e.key === 'Escape') { e.preventDefault(); cancelPropertyEdit(); }
+    };
+
+    const handleDelete = () => {
+        if (onRemoveItem && window.confirm(`Are you sure you want to delete "${displayName}"?`)) {
+            onRemoveItem(item.id);
+            onClose();
         }
     };
 
@@ -86,11 +123,11 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ item, onClose, onRenameItem
             </div>
 
             {/* ── Body ───────────────────────────────────────────────────────── */}
-            <div className="details-panel-body">
+            <div className="details-panel-body" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
 
                 {/* Editable name row */}
                 <div className="details-name-row">
-                    <span className="details-name-label">Name Of the Item</span>
+                    <span className="details-name-label">Item Name</span>
                     {isEditing ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1 }}>
                             <input
@@ -129,85 +166,162 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ item, onClose, onRenameItem
                     )}
                 </div>
 
-                <p className="details-rename-hint">Double-click the name to rename. Press Enter to save.</p>
+                {/* Action Buttons */}
+                <div style={{ marginBottom: '16px', display: 'flex', gap: '8px' }}>
+                    <button
+                        onClick={() => {
+                            const exportData = {
+                                itemName: displayName,
+                                itemType: item.type,
+                                properties: properties.filter(p => p.checked).map(p => ({
+                                    name: p.name,
+                                    type: p.type,
+                                    defaultValue: p.defaultValue
+                                }))
+                            };
+                            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `${displayName.replace(/[^a-zA-Z0-9]/g, '_')}.json`;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                        }}
+                        className="details-save-btn"
+                        style={{
+                            background: '#10b981',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            padding: '8px 16px',
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            transition: 'background 0.15s'
+                        }}
+                        onMouseOver={(e) => e.currentTarget.style.background = '#059669'}
+                        onMouseOut={(e) => e.currentTarget.style.background = '#10b981'}
+                        title="Save selected properties as JSON"
+                    >
+                        💾 Save
+                    </button>
+                    {onRemoveItem && (
+                        <button
+                            onClick={handleDelete}
+                            className="details-delete-btn"
+                            style={{
+                                background: '#ef4444',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                padding: '8px 16px',
+                                cursor: 'pointer',
+                                fontSize: '13px',
+                                fontWeight: '600',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                transition: 'background 0.15s'
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.background = '#dc2626'}
+                            onMouseOut={(e) => e.currentTarget.style.background = '#ef4444'}
+                        >
+                            🗑️ Delete
+                        </button>
+                    )}
+                </div>
 
-                {/* Condition Configuration Section */}
-                {item.type === 'if-else' && (
-                    <div className="details-config-section">
-                        <h3 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', color: '#374151' }}>
-                            If/Else Configuration
-                        </h3>
-                        <div style={{ marginBottom: '12px' }}>
-                            <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#6b7280' }}>
-                                Condition Expression
-                            </label>
-                            <InputText
-                                value={item.ifElseConfig?.condition || ''}
-                                onChange={(e) => handleIfElseConditionChange(e.target.value)}
-                                placeholder="e.g., record_count > 50"
-                                style={{ width: '100%' }}
-                            />
-                            <small style={{ display: 'block', marginTop: '4px', color: '#9ca3af', fontSize: '11px' }}>
-                                Enter the condition to evaluate (e.g., variable {'>'} value)
-                            </small>
-                        </div>
-                    </div>
-                )}
-
-                {item.type === 'for-loop' && (
-                    <div className="details-config-section">
-                        <h3 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', color: '#374151' }}>
-                            For Loop Configuration
-                        </h3>
-                        <div style={{ marginBottom: '12px' }}>
-                            <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#6b7280' }}>
-                                Number of Iterations
-                            </label>
-                            <InputNumber
-                                value={item.forLoopConfig?.iterations || 0}
-                                onValueChange={(e) => handleForLoopIterationsChange(e.value)}
-                                min={0}
-                                placeholder="e.g., 100"
-                                style={{ width: '100%' }}
-                            />
-                            <small style={{ display: 'block', marginTop: '4px', color: '#9ca3af', fontSize: '11px' }}>
-                                How many times should the loop execute?
-                            </small>
-                        </div>
-                        {item.forLoopConfig?.dataCount !== undefined && (
-                            <div style={{ padding: '8px', background: '#f3f4f6', borderRadius: '4px', fontSize: '12px' }}>
-                                <strong>Data Processed:</strong> {item.forLoopConfig.dataCount} records
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {item.type === 'for-each-loop' && (
-                    <div className="details-config-section">
-                        <h3 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', color: '#374151' }}>
-                            For Each Loop Configuration
-                        </h3>
-                        <div style={{ marginBottom: '12px' }}>
-                            <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#6b7280' }}>
-                                Stop Condition
-                            </label>
-                            <InputText
-                                value={item.forEachLoopConfig?.condition || ''}
-                                onChange={(e) => handleForEachConditionChange(e.target.value)}
-                                placeholder="e.g., item.status === 'complete'"
-                                style={{ width: '100%' }}
-                            />
-                            <small style={{ display: 'block', marginTop: '4px', color: '#9ca3af', fontSize: '11px' }}>
-                                When should the loop stop processing?
-                            </small>
-                        </div>
-                        {item.forEachLoopConfig?.processedCount !== undefined && (
-                            <div style={{ padding: '8px', background: '#f3f4f6', borderRadius: '4px', fontSize: '12px' }}>
-                                <strong>Items Processed:</strong> {item.forEachLoopConfig.processedCount}
-                            </div>
-                        )}
-                    </div>
-                )}
+                {/* Properties Table */}
+                <div className="details-properties-section">
+                    <h3 className="details-properties-title">
+                        Properties
+                    </h3>
+                    
+                    <table className="details-property-table">
+                        <thead>
+                            <tr>
+                                <th>Select</th>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Default Value</th>
+                                <th>Delete</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {properties.map((prop, index) => (
+                                <tr 
+                                    key={index}
+                                    className={prop.checked ? 'property-row-checked' : 'property-row-unchecked'}
+                                >
+                                    <td>
+                                        <input
+                                            type="checkbox"
+                                            checked={prop.checked}
+                                            onChange={() => togglePropertyCheck(index)}
+                                            className="property-checkbox"
+                                        />
+                                    </td>
+                                    <td className="property-name-cell">
+                                        {editingPropertyIndex === index ? (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                <input
+                                                    ref={propertyInputRef}
+                                                    autoFocus
+                                                    className="property-name-input"
+                                                    value={editingPropertyValue}
+                                                    onChange={(e) => setEditingPropertyValue(e.target.value)}
+                                                    onKeyDown={handlePropertyKeyDown}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    style={{ flex: 1, minWidth: 0 }}
+                                                />
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); commitPropertyEdit(); }}
+                                                    title="Save"
+                                                    style={{ padding: '2px 6px', fontSize: '1px', color: '#10b981', border: '1px solid #10b981', background: 'white', borderRadius: '3px', cursor: 'pointer' }}
+                                                >
+                                                    ✓
+                                                </button>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); cancelPropertyEdit(); }}
+                                                    title="Cancel"
+                                                    style={{ padding: '2px 6px', fontSize: '1px', color: '#ef4444', border: '1px solid #ef4444', background: 'white', borderRadius: '3px', cursor: 'pointer' }}
+                                                >
+                                                    ✗
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <span 
+                                                onDoubleClick={() => startEditingProperty(index, prop.name)}
+                                                title="Double-click to edit"
+                                                style={{ cursor: 'pointer' }}
+                                            >
+                                                {prop.name}
+                                            </span>
+                                        )}
+                                    </td>
+                                    <td className="property-type-cell">
+                                        {prop.type}
+                                    </td>
+                                    <td className="property-value-cell">
+                                        {typeof prop.defaultValue === 'string' ? `"${prop.defaultValue}"` : prop.defaultValue}
+                                    </td>
+                                    <td className="property-delete-cell">
+                                        <button
+                                            onClick={() => deleteProperty(index)}
+                                            className="property-delete-btn"
+                                            title={`Delete ${prop.name}`}
+                                        >
+                                            🗑️
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     );

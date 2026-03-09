@@ -2,6 +2,33 @@
 @import 'primereact/resources/themes/lara-dark-blue/theme.css';
 @import 'primereact/resources/primereact.min.css';
 
+/* ── Theme Variables ────────────────────────────────────────────────────────── */
+:root[data-theme="dark"] {
+    --bg-primary: #0f1117;
+    --bg-secondary: #181a23;
+    --bg-tertiary: #1a1d27;
+    --bg-card: #22263a;
+    --bg-card-hover: #2a2f4a;
+    --border-primary: #2d3148;
+    --border-accent: #4f46e5;
+    --text-primary: #e2e8f0;
+    --text-secondary: #cbd5e1;
+    --text-muted: #6b7280;
+}
+
+:root[data-theme="light"] {
+    --bg-primary: #f9fafb;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #f3f4f6;
+    --bg-card: #ffffff;
+    --bg-card-hover: #f9fafb;
+    --border-primary: #d1d5db;
+    --border-accent: #4f46e5;
+    --text-primary: #111827;
+    --text-secondary: #374151;
+    --text-muted: #6b7280;
+}
+
 *,
 *::before,
 *::after {
@@ -20,8 +47,8 @@ body,
 
 body {
     font-family: 'Inter', sans-serif;
-    background: #0f1117;
-    color: #e2e8f0;
+    background: var(--bg-primary);
+    color: var(--text-primary);
     -webkit-font-smoothing: antialiased;
 }
 

@@ -1,12 +1,12 @@
 import React from 'react';
-import type { PaletteItem } from '../types';
+import type { WorkflowItem } from '../types';
 
-interface PaletteDetailPanelProps {
-    item: PaletteItem;
+interface WorkflowDetailPanelProps {
+    item: WorkflowItem;
     onClose: () => void;
 }
 
-const PaletteDetailPanel: React.FC<PaletteDetailPanelProps> = ({ item, onClose }) => {
+const WorkflowDetailPanel: React.FC<WorkflowDetailPanelProps> = ({ item, onClose }) => {
     return (
         <div className="history-panel" style={{ borderLeft: `4px solid ${item.color}` }}>
             {/* Header */}
@@ -20,7 +20,7 @@ const PaletteDetailPanel: React.FC<PaletteDetailPanelProps> = ({ item, onClose }
                 <div className="history-section-heading">
                     Details
                 </div>
-                <div className="palette-detail-info-text">
+                <div className="workflow-detail-info-text">
                     You selected <strong>{item.label}</strong>.
                 </div>
             </div>
@@ -28,4 +28,4 @@ const PaletteDetailPanel: React.FC<PaletteDetailPanelProps> = ({ item, onClose }
     );
 };
 
-export default PaletteDetailPanel;
+export default WorkflowDetailPanel;

@@ -1,8 +1,8 @@
 import React from 'react';
-import type { PaletteItem, ItemType, DroppedItem, Connection } from '../types';
+import type { WorkflowItem, ItemType, DroppedItem, Connection } from '../types';
 
-// ── Palette data ─────────────────────────────────────────────────────────────
-const PALETTE_ITEMS: PaletteItem[] = [
+// ── Workflow data ─────────────────────────────────────────────────────────────────────
+const WORKFLOW_ITEMS: WorkflowItem[] = [
     // Container
     { type: 'box', label: 'Box', color: '#8b5cf6' },
     // Database Connectors
@@ -68,34 +68,34 @@ function ShapeIcon({ type, color }: { type: ItemType; color: string }) {
 }
 
 interface SidebarProps {
-    onDragStart: (item: PaletteItem) => void;
-    onItemClick: (item: PaletteItem) => void;
+    onDragStart: (item: WorkflowItem) => void;
+    onItemClick: (item: WorkflowItem) => void;
     items: DroppedItem[];
     connections: Connection[];
 }
 
 // ── Sidebar Component ─────────────────────────────────────────────────────────
 const Sidebar: React.FC<SidebarProps> = ({ onDragStart, onItemClick, items, connections }) => {
-    const container = PALETTE_ITEMS.filter(i => i.type === 'box');
-    const databases = PALETTE_ITEMS.filter(i => ['postgresql', 'azuresql', 'mysql', 'oracle'].includes(i.type));
-    const conditions = PALETTE_ITEMS.filter(i => ['if-else', 'for-loop', 'for-each-loop'].includes(i.type));
+    const container = WORKFLOW_ITEMS.filter(i => i.type === 'box');
+    const databases = WORKFLOW_ITEMS.filter(i => ['postgresql', 'azuresql', 'mysql', 'oracle'].includes(i.type));
+    const conditions = WORKFLOW_ITEMS.filter(i => ['if-else', 'for-loop', 'for-each-loop'].includes(i.type));
 
     // Build id → label map for connections
     const labelMap = new Map(items.map(i => [i.id, i.dropCount > 1 ? `${i.label} ${i.dropCount}` : i.label]));
 
-    const handleDragStart = (e: React.DragEvent, item: PaletteItem) => {
+    const handleDragStart = (e: React.DragEvent, item: WorkflowItem) => {
         e.dataTransfer.setData('application/json', JSON.stringify(item));
         e.dataTransfer.effectAllowed = 'copy';
         onDragStart(item);
     };
 
-    const renderGroup = (title: string, groupItems: PaletteItem[]) => (
+    const renderGroup = (title: string, groupItems: WorkflowItem[]) => (
         <div className="sidebar-group">
             <h2>{title}</h2>
             {groupItems.map((item, idx) => (
                 <div
                     key={`${item.type}-${idx}`}
-                    className="palette-item"
+                    className="workflow-item"
                     draggable
                     onDragStart={e => handleDragStart(e, item)}
                     onClick={() => onItemClick(item)}
@@ -109,8 +109,8 @@ const Sidebar: React.FC<SidebarProps> = ({ onDragStart, onItemClick, items, conn
 
     return (
         <aside className="sidebar">
-            <h2 className="palette-heading">
-                🎨 Palette
+            <h2 className="workflow-heading">
+                📦 Workflow
             </h2>
 
             {renderGroup('Container', container)}

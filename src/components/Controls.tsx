@@ -27,6 +27,7 @@ interface ControlsProps {
     hasConnections: boolean;
     canvasScale: number;
     selectedConnInfo: ConnInfo | null;
+    theme: 'light' | 'dark';
     onUndo: () => void;
     onUndoAll: () => void;
     onAutoAlign: () => void;
@@ -42,6 +43,7 @@ interface ControlsProps {
     onReverseConnection: (connId: string) => void;
     onToggleConnectionDirection: (connId: string) => void;
     onCreateGroup: () => void;
+    onToggleTheme: () => void;
 }
 
 // ── Controls Component ────────────────────────────────────────────────────────
@@ -54,6 +56,7 @@ const Controls: React.FC<ControlsProps> = ({
     hasConnections,
     canvasScale,
     selectedConnInfo,
+    theme,
     onUndo,
     onUndoAll,
     onAutoAlign,
@@ -69,6 +72,7 @@ const Controls: React.FC<ControlsProps> = ({
     onReverseConnection,
     onToggleConnectionDirection,
     onCreateGroup,
+    onToggleTheme,
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -148,6 +152,17 @@ const Controls: React.FC<ControlsProps> = ({
                 title="Show dropped items and connections history"
             >
                 📋 History
+            </button>
+
+            <div className="controls-divider" />
+
+            {/* ── Theme toggle ──────────────────────────── */}
+            <button
+                className="ctrl-btn theme-btn"
+                onClick={onToggleTheme}
+                title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            >
+                {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
             </button>
 
             <div className="controls-divider" />

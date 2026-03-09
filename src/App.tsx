@@ -1,11 +1,11 @@
 import { useState, useCallback, useEffect } from 'react';
 import './App.css';
-import type { DroppedItem, Connection, PaletteItem, Group, IfElseConfig, ForLoopConfig, ForEachLoopConfig } from './types';
+import type { DroppedItem, Connection, WorkflowItem, Group } from './types';
 import Sidebar from './components/Sidebar';
 import Canvas from './components/Canvas';
 import Controls from './components/Controls';
 import HistoryPanel from './components/HistoryPanel';
-import PaletteDetailPanel from './components/PaletteDetailPanel';
+import WorkflowDetailPanel from './components/WorkflowDetailPanel';
 import DetailsPanel from './components/DetailsPanel';
 import ConnectionDetailsPanel from './components/ConnectionDetailsPanel';
 
@@ -20,6 +20,9 @@ const ALIGN_Y = 80;
 const ALIGN_GAP = 150;
 
 function App() {
+    // ── Theme state ─────────────────────────────────────────────────────────────
+    const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+
     // ── Core state ──────────────────────────────────────────────────────────────
     // Stack of dropped items — LIFO ordering (push/pop for undo)
     const [droppedItems, setDroppedItems] = useState<DroppedItem[]>([]);
@@ -48,8 +51,8 @@ function App() {
     // Whether the History panel is open
     const [showHistory, setShowHistory] = useState(false);
 
-    // Currently selected palette item for detail view
-    const [detailItem, setDetailItem] = useState<PaletteItem | null>(null);
+    // Currently selected workflow item for detail view
+    const [detailItem, setDetailItem] = useState<WorkflowItem | null>(null);
 
     // ID of the canvas item whose ➜ arrow was clicked (shows bottom DetailsPanel)
     const [detailItemId, setDetailItemId] = useState<string | null>(null);
@@ -115,22 +118,6 @@ function App() {
         ));
     }, []);
 
-    // ── Update condition configuration ─────────────────────────────────────────
-    const handleUpdateConditionConfig = useCallback((itemId: string, config: IfElseConfig | ForLoopConfig | ForEachLoopConfig) => {
-        setDroppedItems(prev => prev.map(item => {
-            if (item.id !== itemId) return item;
-
-            if (item.type === 'if-else' && 'condition' in config && !('iterations' in config)) {
-                return { ...item, ifElseConfig: config as IfElseConfig };
-            } else if (item.type === 'for-loop' && 'iterations' in config) {
-                return { ...item, forLoopConfig: config as ForLoopConfig };
-            } else if (item.type === 'for-each-loop' && 'condition' in config && 'processedCount' in config) {
-                return { ...item, forEachLoopConfig: config as ForEachLoopConfig };
-            }
-            return item;
-        }));
-    }, []);
-
     // ── Undo: remove last item (LIFO) ─────────────────────────────────────────
     const handleUndo = useCallback(() => {
         setDroppedItems(prev => {
@@ -142,6 +129,11 @@ function App() {
             return prev.slice(0, -1);
         });
     }, [selectedIds, detailItemId]);
+
+    // ── Apply theme to document ────────────────────────────────────────────────
+    useEffect(() => {
+        document.documentElement.setAttribute('data-theme', theme);
+    }, [theme]);
 
     // ── Keyboard shortcut: Ctrl+Z → Undo ────────────────────────────────────────
     useEffect(() => {
@@ -156,14 +148,14 @@ function App() {
     }, [handleUndo]);
 
     // ── Drop new item from sidebar ────────────────────────────────────────────
-    const handleDrop = useCallback((paletteItem: PaletteItem, x: number, y: number) => {
+    const handleDrop = useCallback((workflowItem: WorkflowItem, x: number, y: number) => {
         // Count how many items with the same label already exist
-        const sameLabel = droppedItems.filter(i => i.label === paletteItem.label).length;
+        const sameLabel = droppedItems.filter(i => i.label === workflowItem.label).length;
         const newItem: DroppedItem = {
             id: crypto.randomUUID(),
-            type: paletteItem.type,
-            label: paletteItem.label,
-            color: paletteItem.color,
+            type: workflowItem.type,
+            label: workflowItem.label,
+            color: workflowItem.color,
             x, y,
             size: 1,
             zoom: 1,
@@ -252,7 +244,7 @@ function App() {
                 setSelectedIds(prev => (prev.length === 1 && prev[0] === id ? [] : [id]));
             }
         }
-    }, [connectMode, connectFirst, connections]);
+    }, [connectMode, connectFirst, connections, droppedItems]);
 
     const handleDeselect = useCallback(() => {
         if (!connectMode) setSelectedIds([]);
@@ -266,13 +258,13 @@ function App() {
     }, []);
 
     // ── Drop item INTO a box card ─────────────────────────────────────────────
-    const handleDropIntoBox = useCallback((paletteItem: PaletteItem, boxId: string) => {
-        const sameLabel = droppedItems.filter(i => i.label === paletteItem.label).length;
+    const handleDropIntoBox = useCallback((workflowItem: WorkflowItem, boxId: string) => {
+        const sameLabel = droppedItems.filter(i => i.label === workflowItem.label).length;
         const newItem: DroppedItem = {
             id: crypto.randomUUID(),
-            type: paletteItem.type,
-            label: paletteItem.label,
-            color: paletteItem.color,
+            type: workflowItem.type,
+            label: workflowItem.label,
+            color: workflowItem.color,
             x: 0,
             y: 0,
             size: 1,
@@ -522,8 +514,8 @@ function App() {
         []
     );
 
-    // ── Handle Palette Item Click ────────────────────────────────────────
-    const handlePaletteClick = useCallback((item: PaletteItem) => {
+    // ── Handle Workflow Item Click ────────────────────────────────────────────────
+    const handleWorkflowClick = useCallback((item: WorkflowItem) => {
         setDetailItem(item);
         setShowHistory(false); // Close history if opening detail
     }, []);
@@ -619,6 +611,11 @@ function App() {
         );
     }, []);
 
+    // ── Toggle theme ─────────────────────────────────────────────────────
+    const handleToggleTheme = useCallback(() => {
+        setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+    }, []);
+
     // ── Render ───────────────────────────────────────────────────────────────────────────
     return (
         <div className="app">
@@ -627,7 +624,7 @@ function App() {
                 onDragStart={() => { }} // This prop is required by Sidebar but its state was unused.
                 items={droppedItems}
                 connections={connections}
-                onItemClick={handlePaletteClick}
+                onItemClick={handleWorkflowClick}
             />
 
             {/* ── Right Panel (Controls + Canvas) ──────── */}
@@ -642,6 +639,7 @@ function App() {
                     canvasScale={canvasScale}
                     selectedConnInfo={selectedConnInfo}
                     showHistory={showHistory}
+                    theme={theme}
                     onUndo={handleUndo}
                     onUndoAll={handleUndoAll}
                     onAutoAlign={handleAutoAlign}
@@ -656,6 +654,7 @@ function App() {
                     onReverseConnection={handleReverseConnection}
                     onToggleConnectionDirection={handleToggleConnectionDirection}
                     onCreateGroup={handleCreateGroup}
+                    onToggleTheme={handleToggleTheme}
                 />
                 <div className="canvas-wrapper">
                     <Canvas
@@ -708,9 +707,9 @@ function App() {
                     />
                 )}
 
-                {/* Palette Detail panel — similar to History panel */}
+                {/* Workflow Detail panel — similar to History panel */}
                 {detailItem && (
-                    <PaletteDetailPanel
+                    <WorkflowDetailPanel
                         item={detailItem}
                         onClose={() => setDetailItem(null)}
                     />
@@ -724,7 +723,7 @@ function App() {
                             item={found}
                             onClose={() => setDetailItemId(null)}
                             onRenameItem={handleRenameItem}
-                            onUpdateConditionConfig={handleUpdateConditionConfig}
+                            onRemoveItem={handleRemoveItem}
                         />
                     ) : null;
                 })()}

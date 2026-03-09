@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import type { DroppedItem, PaletteItem, Connection } from '../types';
+import type { DroppedItem, WorkflowItem, Connection } from '../types';
 
 const BASE_SIZE = 64;
 const DB_TYPES = ['postgresql', 'azuresql', 'mysql', 'oracle'];
@@ -29,7 +29,7 @@ interface CanvasItemProps {
   onRenameItem?: (id: string, newLabel: string) => void;
   // Box-specific
   children?: DroppedItem[];
-  onDropIntoBox?: (paletteItem: PaletteItem, boxId: string) => void;
+  onDropIntoBox?: (workflowItem: WorkflowItem, boxId: string) => void;
   // Connect-mode props (passed from Canvas)
   connectMode?: boolean;
   connectFirst?: string | null;
@@ -459,7 +459,7 @@ const CanvasItem: React.FC<CanvasItemProps> = ({
 
   const handleBoxDrop = (e: React.DragEvent) => {
     if (!isBox || !onDropIntoBox) return;
-    // Only intercept palette drops — move operations must bubble to the canvas
+    // Only intercept workflow drops — move operations must bubble to the canvas
     const types = Array.from(e.dataTransfer.types);
     if (!types.includes('application/json')) return; // let canvas handle moves
     e.preventDefault();
@@ -468,9 +468,9 @@ const CanvasItem: React.FC<CanvasItemProps> = ({
     const raw = e.dataTransfer.getData('application/json');
     if (!raw) return;
     try {
-      const paletteItem: PaletteItem = JSON.parse(raw);
-      if (paletteItem.type === 'box') return; // no box-in-box
-      onDropIntoBox(paletteItem, item.id);
+      const workflowItem: WorkflowItem = JSON.parse(raw);
+      if (workflowItem.type === 'box') return; // no box-in-box
+      onDropIntoBox(workflowItem, item.id);
     } catch { /* ignore */ }
   };
 
@@ -543,7 +543,7 @@ const CanvasItem: React.FC<CanvasItemProps> = ({
             )}
           </div>
 
-          {/* ── Body — drop zone for palette items only ── */}
+          {/* ── Body — drop zone for workflow items only ── */}
           <div
             className="box-card-body"
             onDragOver={handleBoxDragOver}

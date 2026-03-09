@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import type { DroppedItem, PaletteItem, Connection, Group } from '../types';
+import type { DroppedItem, WorkflowItem, Connection, Group } from '../types';
 import CanvasItem from './CanvasItem';
 import ConnectionLayer from './ConnectionLayer';
 import GroupContainer from './GroupContainer';
@@ -13,7 +13,7 @@ interface CanvasProps {
     selectedConnectionId: string | null;
     selectedIds: string[];
     groups: Group[];
-    onDrop: (paletteItem: PaletteItem, x: number, y: number) => void;
+    onDrop: (workflowItem: WorkflowItem, x: number, y: number) => void;
     onSelect: (id: string, multiSelect?: boolean) => void;
     onMoveItem: (id: string, x: number, y: number) => void;
     onDeselect: () => void;
@@ -22,7 +22,7 @@ interface CanvasProps {
     onDetailItem: (id: string) => void;
     onMoveGroup: (groupId: string, x: number, y: number) => void;
     onUngroup: (groupId: string) => void;
-    onDropIntoBox: (paletteItem: PaletteItem, boxId: string) => void;
+    onDropIntoBox: (workflowItem: WorkflowItem, boxId: string) => void;
     onRenameItem: (id: string, newLabel: string) => void;
 }
 
@@ -55,7 +55,7 @@ const Canvas: React.FC<CanvasProps> = ({
         e.preventDefault();
         // dropEffect must match effectAllowed set in dragstart:
         // - item/group moves use effectAllowed='move'
-        // - palette drops use effectAllowed='copy'
+        // - workflow drops use effectAllowed='copy'
         const types = Array.from(e.dataTransfer.types);
         const isMove = types.includes('text/move-id') || types.includes('text/move-group-id');
         e.dataTransfer.dropEffect = isMove ? 'move' : 'copy';
@@ -96,14 +96,14 @@ const Canvas: React.FC<CanvasProps> = ({
             return;
         }
 
-        // Dropping a new palette item onto the canvas
+        // Dropping a new workflow item onto the canvas
         const raw = e.dataTransfer.getData('application/json');
         if (!raw) return;
         try {
-            const paletteItem: PaletteItem = JSON.parse(raw);
+            const workflowItem: WorkflowItem = JSON.parse(raw);
             const x = (e.clientX - rect.left + scrollLeft - 40) / canvasScale;
             const y = (e.clientY - rect.top + scrollTop - 40) / canvasScale;
-            onDrop(paletteItem, Math.max(0, x), Math.max(0, y));
+            onDrop(workflowItem, Math.max(0, x), Math.max(0, y));
         } catch { /* ignore */ }
     };
 

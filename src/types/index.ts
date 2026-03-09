@@ -1,10 +1,10 @@
 // ─── Shared TypeScript Types ─────────────────────────────────────────────────
 
-/** Types of items available in the sidebar palette */
+/** Types of items available in the sidebar workflow */
 export type ItemType = 'postgresql' | 'azuresql' | 'mysql' | 'oracle' | 'box'
     | 'if-else' | 'for-loop' | 'for-each-loop';
 
-/** Types of database/service items available in the palette bar */
+/** Types of database/service items available in the workflow bar */
 export type DatabaseType = 'postgresql' | 'azuresql' | 'mysql' | 'oracle';
 
 /** Types of condition/logic nodes */
@@ -27,8 +27,8 @@ export interface ForEachLoopConfig {
     processedCount?: number; // Track processed items
 }
 
-/** A palette item shown in the sidebar — draggable source */
-export interface PaletteItem {
+/** A workflow item shown in the sidebar — draggable source */
+export interface WorkflowItem {
     type: ItemType;
     label: string;
     color: string;
